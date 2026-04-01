@@ -24,8 +24,3 @@ export async function GET(request) {
 
   return NextResponse.redirect(`${origin}/portal`);
 }
-```
-
-Then go to Supabase > **Authentication > URL Configuration** and add this to your Redirect URLs:
-```
-https://high-hat-ajj.vercel.app/auth/callback
