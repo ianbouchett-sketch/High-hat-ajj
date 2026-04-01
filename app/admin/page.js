@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import AdminApp from '@/components/AdminApp';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function AdminPage() {
   const supabase = createClient(
