@@ -1,39 +1,35 @@
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
-import { createServerClient } from '@supabase/ssr';
+'use client';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
 import MemberPortal from '@/components/MemberPortal';
 
-export const dynamic = 'force-dynamic';
+export default function PortalPage() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-export default async function PortalPage() {
-  const cookieStore = cookies();
+  useEffect(() => {
+    async function load() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { window.location.href = '/login'; return; }
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    {
-      cookies: {
-        get(name) { return cookieStore.get(name)?.value; },
-      },
+      const memberId = session.user.id;
+      const [{ data: member }, { data: sessions }, { data: schedule }] = await Promise.all([
+        supabase.from('members').select('*').eq('id', memberId).single(),
+        supabase.from('sessions').select('*').eq('member_id', memberId).order('session_date', { ascending: false }),
+        supabase.from('schedule').select('*').eq('active', true).order('day_of_week').order('start_time'),
+      ]);
+
+      setData({ member, sessions: sessions || [], schedule: schedule || [] });
+      setLoading(false);
     }
+    load();
+  }, []);
+
+  if (loading) return (
+    <div style={{ minHeight: '100vh', background: '#060606', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ color: '#c9a227', fontFamily: "'Barlow Condensed', Arial, sans-serif", fontSize: 14, letterSpacing: 2, textTransform: 'uppercase' }}>Loading...</div>
+    </div>
   );
 
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) redirect('/login');
-
-  const memberId = session.user.id;
-
-  const [{ data: member }, { data: sessions }, { data: schedule }] = await Promise.all([
-    supabase.from('members').select('*').eq('id', memberId).single(),
-    supabase.from('sessions').select('*').eq('member_id', memberId).order('session_date', { ascending: false }),
-    supabase.from('schedule').select('*').eq('active', true).order('day_of_week').order('start_time'),
-  ]);
-
-  return (
-    <MemberPortal
-      initialMember={member}
-      initialSessions={sessions || []}
-      initialSchedule={schedule || []}
-    />
-  );
+  return <MemberPortal initialMember={data.member} initialSessions={data.sessions} initialSchedule={data.schedule} />;
 }
