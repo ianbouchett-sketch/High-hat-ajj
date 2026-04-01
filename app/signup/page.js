@@ -25,25 +25,45 @@ export default function SignupPage(){
     if(form.password!==form.confirm)return setError('Passwords do not match.');
     setLoading(true);
 
-    const{error:signupErr}=await supabase.auth.signUp({
+    // Step 1: Create the auth account
+    const{data,error:signupErr}=await supabase.auth.signUp({
       email:form.email,
       password:form.password,
-      options:{data:{name:form.name,phone:form.phone,emergency_contact:form.emergency_contact,belt:form.belt,stripes:+form.stripes}}
+      options:{
+        data:{
+          name:form.name,
+          phone:form.phone,
+          emergency_contact:form.emergency_contact,
+          belt:form.belt,
+          stripes:+form.stripes,
+        }
+      }
     });
 
     if(signupErr){setError(signupErr.message);setLoading(false);return;}
 
-    // Update member row with all details -- trigger creates it, we fill in the rest
-    const{data:{user}}=await supabase.auth.getUser();
-    if(user){
-      await supabase.from('members').update({
-        name:form.name,
-        phone:form.phone,
-        emergency_contact:form.emergency_contact,
-        belt:form.belt,
-        stripes:+form.stripes,
-        status:'pending',
-      }).eq('id',user.id);
+    const userId = data?.user?.id;
+
+    if(userId){
+      // Step 2: Upsert the member row directly using the user ID we just got
+      // This is more reliable than calling getUser() after signup
+      const{error:upsertErr}=await supabase.from('members').upsert({
+        id: userId,
+        email: form.email,
+        name: form.name,
+        phone: form.phone,
+        emergency_contact: form.emergency_contact,
+        belt: form.belt,
+        stripes: +form.stripes,
+        status: 'pending',
+        joined_at: new Date().toISOString().split('T')[0],
+        next_payment_date: new Date().toISOString().split('T')[0],
+      }, { onConflict: 'id' });
+
+      if(upsertErr){
+        console.error('Member upsert error:', upsertErr);
+        // Don't block the user -- account was created, profile can be updated later
+      }
     }
 
     setLoading(false);
@@ -53,7 +73,6 @@ export default function SignupPage(){
   return(
     <div style={{minHeight:'100vh',background:BG,display:'flex',alignItems:'center',justifyContent:'center',padding:20,fontFamily:FB}}>
       <div style={{width:'100%',maxWidth:460}}>
-        {/* Logo */}
         <div style={{textAlign:'center',marginBottom:32}}>
           <div style={{display:'inline-flex',alignItems:'center',gap:12}}>
             <div style={{position:'relative',width:48,height:36,flexShrink:0}}>
@@ -79,7 +98,6 @@ export default function SignupPage(){
                 <div><FL>Email</FL><input style={inp} type="email" value={form.email} onChange={e=>set('email',e.target.value)} placeholder="you@example.com"/></div>
                 <div><FL>Phone</FL><input style={inp} type="tel" value={form.phone} onChange={e=>set('phone',e.target.value)} placeholder="802-555-0000"/></div>
                 <div><FL>Emergency Contact</FL><input style={inp} value={form.emergency_contact} onChange={e=>set('emergency_contact',e.target.value)} placeholder="Name - Phone number"/></div>
-                {/* Belt and stripes */}
                 <div style={{display:'flex',gap:12}}>
                   <div style={{flex:1}}>
                     <FL>Current Belt</FL>
