@@ -119,6 +119,15 @@ function DetailModal({id,members,setMembers,onClose}){
   async function saveBelt(){setSv(true);await supabase.from('members').update({belt,stripes}).eq('id',id);setMembers(ms=>ms.map(x=>x.id===id?{...x,belt,stripes}:x));setSv(false);}
   async function logSess(){setSv(true);const n=(m.sessions||0)+1;await supabase.from('members').update({sessions:n}).eq('id',id);await supabase.from('sessions').insert({member_id:id,session_date:todayStr()});setMembers(ms=>ms.map(x=>x.id===id?{...x,sessions:n}:x));setSv(false);}
   async function setStat(s){setSv(true);const u={status:s};if(s==='active')u.last_payment=todayStr();await supabase.from('members').update(u).eq('id',id);setMembers(ms=>ms.map(x=>x.id===id?{...x,...u}:x));setSv(false);onClose();}
+  async function deleteMember(){
+  if(!window.confirm(`Permanently delete ${m.name}? This cannot be undone.`))return;
+  setSv(true);
+  await supabase.from('sessions').delete().eq('member_id',id);
+  await supabase.from('members').delete().eq('id',id);
+  setMembers(ms=>ms.filter(x=>x.id!==id));
+  setSv(false);
+  onClose();
+}
   async function cancelSub(){
     if(!m.stripe_subscription_id){alert('No Stripe subscription ID on file.');return;}
     setCanc(true);
@@ -167,7 +176,10 @@ function DetailModal({id,members,setMembers,onClose}){
       <div style={{color:'#c94040',fontSize:13,fontFamily:FB,marginBottom:12}}>This cancels the Stripe subscription immediately. Cannot be undone.</div>
       <div style={{display:'flex',gap:8}}><GhBtn ch="Keep It" onClick={()=>setConf(false)} style={{flex:1}}/><DBtn ch={cancelling?'Cancelling...':'Yes, Cancel'} onClick={cancelSub} style={{flex:1}} disabled={cancelling}/></div>
     </div>}
-    <GhBtn ch="Close" onClick={onClose} style={{width:'100%',textAlign:'center'}}/>
+<div style={{display:'flex',gap:8,marginTop:4}}>
+  <GhBtn ch="Close" onClick={onClose} style={{flex:1,textAlign:'center'}}/>
+  <DBtn ch="Delete Member" onClick={deleteMember} style={{flex:1,textAlign:'center'}} disabled={sv}/>
+</div>
   </>}/>;
 }
 
