@@ -26,7 +26,7 @@ function GBtn({ch,onClick,style={},small,disabled}){return <button onClick={onCl
 function GhBtn({ch,onClick,style={}}){return <button onClick={onClick} style={{padding:'7px 14px',background:'transparent',border:`1px solid ${BL}`,borderRadius:3,color:'#555',fontSize:11,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',...style}}>{ch}</button>}
 function DBtn({ch,onClick,style={},disabled}){return <button onClick={onClick} disabled={disabled} style={{padding:'7px 14px',background:'transparent',border:'1px solid #7a2020',borderRadius:3,color:'#c94040',fontSize:11,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',opacity:disabled?.5:1,...style}}>{ch}</button>}
 function BB({belt,stripes,lg}){const c=BELT_CFG[belt]||BELT_CFG.White,sc=belt==='White'?'#111':'#fff';const h=lg?22:16,w=lg?90:64,sw=lg?6:4;return <div style={{display:'inline-flex',alignItems:'center',justifyContent:'space-between',background:c.bg,border:`1.5px solid ${c.br}`,borderRadius:2,width:w,height:h,padding:'0 4px',flexShrink:0,gap:2}}><span style={{fontSize:lg?9:7,fontWeight:800,fontFamily:F,color:c.tx,letterSpacing:1,textTransform:'uppercase'}}>{belt}</span><div style={{display:'flex',gap:2}}>{[0,1,2,3,4].map(i=><div key={i} style={{width:sw,height:h-4,borderRadius:1,background:i<stripes?sc:'transparent',border:`1px solid ${i<stripes?sc:(belt==='White'?'#aaa':c.br)}`,opacity:i<stripes?1:0.3}}/>)}</div></div>}
-function SDot({status}){return <span style={{display:'inline-block',width:7,height:7,borderRadius:'50%',background:{active:GRN,overdue:ORG,inactive:'#444'}[status]||'#444',flexShrink:0}}/>}
+function SDot({status}){return <span style={{display:'inline-block',width:7,height:7,borderRadius:'50%',background:{active:GRN,overdue:ORG,inactive:'#444',pending:'#3a7abd'}[status]||'#444',flexShrink:0}}/>}
 function TPill({type}){const c=TYPE_CFG[type]||TYPE_CFG.Other;return <span style={{padding:'2px 7px',background:c.bg,border:`1px solid ${c.br}`,borderRadius:2,fontSize:9,fontWeight:800,fontFamily:F,color:'#fff',letterSpacing:1,textTransform:'uppercase'}}>{type}</span>}
 function FL({ch}){return <div style={{color:GD,fontSize:10,letterSpacing:1.5,textTransform:'uppercase',marginBottom:6,fontWeight:800,fontFamily:F}}>{ch}</div>}
 const inp={width:'100%',background:'#111',border:`1px solid ${BL}`,borderRadius:3,padding:'10px 12px',color:'#fff',fontSize:14,outline:'none',fontFamily:FB,WebkitAppearance:'none',colorScheme:'dark',boxSizing:'border-box'};
@@ -71,11 +71,11 @@ function RosterView({members,setMembers,openDetail}){
   return <>
     <input value={search} onChange={e=>setSrch(e.target.value)} placeholder="Search members..." style={{...inp,marginBottom:12,background:CARD}}/>
     <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap',alignItems:'center'}}>
-      {['all','active','overdue','inactive'].map(f=><button key={f} onClick={()=>setF(f)} style={{padding:'6px 14px',background:filter===f?GK:'transparent',border:`1px solid ${filter===f?GD:BL}`,borderRadius:3,color:filter===f?G:'#555',fontSize:11,fontWeight:800,fontFamily:F,letterSpacing:1.5,textTransform:'uppercase',cursor:'pointer'}}>{f}</button>)}
+      {['all','pending','active','overdue','inactive'].map(f=><button key={f} onClick={()=>setF(f)} style={{padding:'6px 14px',background:filter===f?GK:'transparent',border:`1px solid ${filter===f?GD:BL}`,borderRadius:3,color:filter===f?G:'#555',fontSize:11,fontWeight:800,fontFamily:F,letterSpacing:1.5,textTransform:'uppercase',cursor:'pointer'}}>{f}</button>)}
       <GBtn ch="+ Member" onClick={()=>setAdd(true)} small style={{marginLeft:'auto'}}/>
     </div>
     {list.map(m=>{
-      const sc=m.status==='overdue'?ORG:m.status==='active'?GRN:'#444';
+      const sc=m.status==='overdue'?ORG:m.status==='active'?GRN:m.status==='pending'?'#3a7abd':'#444';
       const od=m.status==='overdue'&&m.last_payment?dOD(m.last_payment):0;
       return <div key={m.id} style={{background:CARD,border:`1px solid ${BL}`,borderRadius:5,marginBottom:8,overflow:'hidden'}}>
         <div onClick={()=>openDetail(m.id)} style={{display:'flex',alignItems:'center',gap:12,padding:'12px 16px',cursor:'pointer'}}>
@@ -114,20 +114,33 @@ function DetailModal({id,members,setMembers,onClose}){
   const [sv,setSv]=useState(false);
   const [conf,setConf]=useState(false);
   const [cancelling,setCanc]=useState(false);
+  const [showPayLink,setShowPayLink]=useState(false);
+  const [payAmount,setPayAmount]=useState('');
+  const [generatedLink,setGeneratedLink]=useState(null);
+  const [genLoading,setGenLoading]=useState(false);
+  async function generatePayLink(){
+    if(!payAmount||isNaN(payAmount)||+payAmount<1)return;
+    setGenLoading(true);setGeneratedLink(null);
+    const res=await fetch('/api/create-payment-link',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:+payAmount,memberId:id,memberName:m.name,memberEmail:m.email})});
+    const data=await res.json();
+    if(data.url)setGeneratedLink(data.url);
+    else alert('Error: '+data.error);
+    setGenLoading(false);
+  }
   if(!m)return null;
   const od=m.status==='overdue'&&m.last_payment?dOD(m.last_payment):0;
   async function saveBelt(){setSv(true);await supabase.from('members').update({belt,stripes}).eq('id',id);setMembers(ms=>ms.map(x=>x.id===id?{...x,belt,stripes}:x));setSv(false);}
   async function logSess(){setSv(true);const n=(m.sessions||0)+1;await supabase.from('members').update({sessions:n}).eq('id',id);await supabase.from('sessions').insert({member_id:id,session_date:todayStr()});setMembers(ms=>ms.map(x=>x.id===id?{...x,sessions:n}:x));setSv(false);}
   async function setStat(s){setSv(true);const u={status:s};if(s==='active')u.last_payment=todayStr();await supabase.from('members').update(u).eq('id',id);setMembers(ms=>ms.map(x=>x.id===id?{...x,...u}:x));setSv(false);onClose();}
   async function deleteMember(){
-  if(!window.confirm(`Permanently delete ${m.name}? This cannot be undone.`))return;
-  setSv(true);
-  await supabase.from('sessions').delete().eq('member_id',id);
-  await supabase.from('members').delete().eq('id',id);
-  setMembers(ms=>ms.filter(x=>x.id!==id));
-  setSv(false);
-  onClose();
-}
+    if(!window.confirm(`Permanently delete ${m.name}? This cannot be undone.`))return;
+    setSv(true);
+    await supabase.from('sessions').delete().eq('member_id',id);
+    await supabase.from('members').delete().eq('id',id);
+    setMembers(ms=>ms.filter(x=>x.id!==id));
+    setSv(false);
+    onClose();
+  }
   async function cancelSub(){
     if(!m.stripe_subscription_id){alert('No Stripe subscription ID on file.');return;}
     setCanc(true);
@@ -176,10 +189,26 @@ function DetailModal({id,members,setMembers,onClose}){
       <div style={{color:'#c94040',fontSize:13,fontFamily:FB,marginBottom:12}}>This cancels the Stripe subscription immediately. Cannot be undone.</div>
       <div style={{display:'flex',gap:8}}><GhBtn ch="Keep It" onClick={()=>setConf(false)} style={{flex:1}}/><DBtn ch={cancelling?'Cancelling...':'Yes, Cancel'} onClick={cancelSub} style={{flex:1}} disabled={cancelling}/></div>
     </div>}
-<div style={{display:'flex',gap:8,marginTop:4}}>
-  <GhBtn ch="Close" onClick={onClose} style={{flex:1,textAlign:'center'}}/>
-  <DBtn ch="Delete Member" onClick={deleteMember} style={{flex:1,textAlign:'center'}} disabled={sv}/>
-</div>
+    <div style={{display:'flex',gap:8,marginTop:4}}>
+    <GhBtn ch="Close" onClick={onClose} style={{flex:1,textAlign:'center'}}/>
+    <DBtn ch="Delete Member" onClick={deleteMember} style={{flex:1,textAlign:'center'}} disabled={sv}/>
+  </div>
+  {m.status==='pending'&&!showPayLink&&<button onClick={()=>setShowPayLink(true)} style={{marginTop:8,width:'100%',padding:'12px',background:'#0a1a3a',border:'1px solid #2a5a8a',borderRadius:4,color:'#3a7abd',fontSize:12,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>Send Payment Link</button>}
+  {showPayLink&&<div style={{marginTop:8,background:'#0a1020',border:'1px solid #2a3a5a',borderRadius:4,padding:'16px'}}>
+    <div style={{color:'#3a7abd',fontSize:11,fontWeight:800,fontFamily:F,letterSpacing:1.5,textTransform:'uppercase',marginBottom:12}}>Generate Payment Link</div>
+    <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:12}}>
+      <div style={{color:'#fff',fontSize:16,fontWeight:800,fontFamily:F}}>$</div>
+      <input value={payAmount} onChange={e=>setPayAmount(e.target.value)} placeholder="140" type="number" style={{flex:1,background:'#111',border:`1px solid ${BL}`,borderRadius:3,padding:'10px 12px',color:'#fff',fontSize:15,outline:'none',fontFamily:FB,boxSizing:'border-box'}}/>
+      <button onClick={generatePayLink} disabled={genLoading||!payAmount} style={{padding:'10px 16px',background:'#3a7abd',border:'none',borderRadius:3,color:'#fff',fontSize:12,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',opacity:genLoading||!payAmount?.5:1}}>{genLoading?'Generating...':'Generate'}</button>
+    </div>
+    {generatedLink&&<div style={{background:'#111',border:`1px solid ${BL}`,borderRadius:3,padding:'12px'}}>
+      <div style={{color:'#3a7abd',fontSize:10,fontWeight:800,fontFamily:F,letterSpacing:1.5,textTransform:'uppercase',marginBottom:8}}>Payment Link Ready</div>
+      <div style={{color:'#fff',fontSize:12,fontFamily:FB,wordBreak:'break-all',marginBottom:10}}>{generatedLink}</div>
+      <button onClick={()=>{navigator.clipboard.writeText(generatedLink);}} style={{width:'100%',padding:'9px',background:G,border:'none',borderRadius:3,color:'#000',fontSize:12,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>Copy Link</button>
+      <div style={{color:'#444',fontSize:11,fontFamily:FB,marginTop:8,textAlign:'center'}}>Text or email this link to {m.name}</div>
+    </div>}
+    {!generatedLink&&<button onClick={()=>setShowPayLink(false)} style={{width:'100%',padding:'8px',background:'transparent',border:`1px solid ${BL}`,borderRadius:3,color:'#555',fontSize:11,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>Cancel</button>}
+  </div>}
   </>}/>;
 }
 
@@ -300,7 +329,7 @@ export default function AdminApp({initialMembers,initialSchedule,initialProducts
   const [view,setView]=useState('roster');
   const [detailId,setDetailId]=useState(null);
   const navs=[{id:'roster',l:'Roster'},{id:'payments',l:'Payments'},{id:'schedule',l:'Schedule'},{id:'products',l:'Gear'},{id:'analytics',l:'Analytics'}];
-  const stats=[{l:'Active',v:members.filter(m=>m.status==='active').length,c:GRN},{l:'Overdue',v:members.filter(m=>m.status==='overdue').length,c:ORG},{l:'Inactive',v:members.filter(m=>m.status==='inactive').length,c:'#444'},{l:'Sessions',v:members.reduce((a,m)=>a+(m.sessions||0),0).toLocaleString(),c:G}];
+  const stats=[{l:'Pending',v:members.filter(m=>m.status==='pending').length,c:'#3a7abd'},{l:'Active',v:members.filter(m=>m.status==='active').length,c:GRN},{l:'Overdue',v:members.filter(m=>m.status==='overdue').length,c:ORG},{l:'Sessions',v:members.reduce((a,m)=>a+(m.sessions||0),0).toLocaleString(),c:G}];
   return <div style={{minHeight:'100vh',background:BG,color:'#fff',fontFamily:FB}}>
     <div style={{height:3,background:G}}/>
     <div style={{background:BG,borderBottom:`1px solid ${BL}`,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 16px',height:58,position:'sticky',top:0,zIndex:40,flexWrap:'wrap',gap:8}}>
