@@ -9,20 +9,17 @@ export default async function AdminPage() {
     process.env.SUPABASE_SERVICE_ROLE_KEY
   );
 
-  const { data: members, error } = await supabase
-    .from('members')
-    .select('*');
-
-  console.log('members:', members, 'error:', error);
-
-  const { data: schedule } = await supabase
-    .from('schedule')
-    .select('*');
+  const [{ data: members }, { data: schedule }, { data: products }] = await Promise.all([
+    supabase.from('members').select('*').order('name'),
+    supabase.from('schedule').select('*').eq('active', true).order('day_of_week').order('start_time'),
+    supabase.from('products').select('*').eq('active', true).order('name'),
+  ]);
 
   return (
     <AdminApp
       initialMembers={members || []}
       initialSchedule={schedule || []}
+      initialProducts={products || []}
     />
   );
 }
