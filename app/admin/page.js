@@ -1,23 +1,23 @@
-import { getServiceSupabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import AdminApp from '@/components/AdminApp';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminPage() {
-  const supabase = getServiceSupabase();
+  const supabase = createClient(
+    'https://rpkyxynurxntoqonfdni.supabase.co',
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
 
-  const [{ data: members }, { data: schedule }] = await Promise.all([
-    supabase
-      .from('members')
-      .select('*')
-      .order('name'),
-    supabase
-      .from('schedule')
-      .select('*')
-      .eq('active', true)
-      .order('day_of_week')
-      .order('start_time'),
-  ]);
+  const { data: members, error } = await supabase
+    .from('members')
+    .select('*');
+
+  console.log('members:', members, 'error:', error);
+
+  const { data: schedule } = await supabase
+    .from('schedule')
+    .select('*');
 
   return (
     <AdminApp
