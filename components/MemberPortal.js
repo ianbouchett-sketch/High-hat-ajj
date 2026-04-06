@@ -123,6 +123,19 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
     showT('Rank updated! Congrats!');
   }
 
+  const [community,setCommunity]=useState({topTrainers:[],recentPromos:[],loaded:false});
+
+  useEffect(()=>{
+    async function loadCommunity(){
+      const[{data:trainers},{data:promos}]=await Promise.all([
+        supabase.from('members').select('id,name,belt,stripes,sessions').eq('status','active').order('sessions',{ascending:false}).limit(10),
+        supabase.from('promotions').select('*').order('promoted_at',{ascending:false}).limit(8),
+      ]);
+      setCommunity({topTrainers:trainers||[],recentPromos:promos||[],loaded:true});
+    }
+    loadCommunity();
+  },[]);
+
   const cnt=sessions.length,streak=computeStreak(sessions);
   const earned=MILES.filter(m=>cnt>=m.n),next=MILES.find(m=>cnt<m.n);
   const isOD=member.status==='overdue';
@@ -226,6 +239,56 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
           {sessions.slice(0,4).map(s=><div key={s.id} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 0',borderBottom:`1px solid ${BL}`}}><div style={{width:5,height:5,borderRadius:'50%',background:G,flexShrink:0}}/><span style={{color:'#555',fontSize:13,fontFamily:F}}>{fmtS(s.session_date)}</span>{s.note&&<span style={{color:'#2a2a2a',fontSize:12,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.note}</span>}</div>)}
           {sessions.length===0&&<div style={{color:'#2a2a2a',fontSize:13,fontFamily:F}}>No sessions yet.</div>}
         </div></Card>
+
+        {/* Top Trainers */}
+        <Card>
+          <div style={{padding:'14px 16px'}}>
+            <SLabel>Top Trainers</SLabel>
+            {!community.loaded&&<div style={{color:'#2a2a2a',fontSize:13,fontFamily:F}}>Loading...</div>}
+            {community.topTrainers.map((t,i)=>{
+              const maxS=community.topTrainers[0]?.sessions||1;
+              const c=BELT_CFG[t.belt]||BELT_CFG.White;
+              return <div key={t.id} style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+                <div style={{color:i===0?G:'#2a2200',fontWeight:800,fontSize:16,fontFamily:F,width:20,textAlign:'center',flexShrink:0}}>{i+1}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+                    <span style={{color:t.id===member.id?G:'#fff',fontSize:13,fontWeight:700,fontFamily:F,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{t.id===member.id?'You':t.name}</span>
+                    <span style={{padding:'1px 5px',background:c.bg,border:`1px solid ${c.br}`,borderRadius:2,fontSize:8,fontWeight:800,fontFamily:F,color:c.tx,letterSpacing:1,textTransform:'uppercase',flexShrink:0}}>{t.belt}</span>
+                  </div>
+                  <div style={{height:3,background:'#161600',borderRadius:1}}><div style={{height:3,borderRadius:1,background:t.id===member.id?G:GD,width:`${((t.sessions||0)/maxS)*100}%`,opacity:t.id===member.id?1:0.6}}/></div>
+                </div>
+                <div style={{color:t.id===member.id?G:'#555',fontWeight:800,fontSize:14,fontFamily:F,flexShrink:0,minWidth:28,textAlign:'right'}}>{t.sessions||0}</div>
+              </div>;
+            })}
+            {community.loaded&&community.topTrainers.length===0&&<div style={{color:'#2a2a2a',fontSize:13,fontFamily:F}}>No data yet.</div>}
+          </div>
+        </Card>
+
+        {/* Recent Promotions */}
+        {community.recentPromos.length>0&&<Card>
+          <div style={{padding:'14px 16px'}}>
+            <SLabel>Recent Promotions</SLabel>
+            {community.recentPromos.map(p=>{
+              const bc=b=>({White:'#e8e8e0',Grey:'#888',Yellow:'#c9a227',Orange:'#c97316',Green:'#2a6a2a',Blue:'#1a3a6e',Purple:'#3e1460',Brown:'#4a2000',Black:'#222'}[b]||'#444');
+              const btx=b=>(['White','Yellow'].includes(b)?'#000':'#fff');
+              const kids=b=>['Grey','Yellow','Orange','Green'].includes(b);
+              const fmtD=d=>{const diff=Math.floor((new Date()-new Date(d))/86400000);return diff===0?'Today':diff===1?'Yesterday':`${diff}d ago`;};
+              return <div key={p.id} style={{display:'flex',alignItems:'center',gap:10,padding:'9px 0',borderBottom:`1px solid ${BL}`}}>
+                <div style={{width:32,height:32,borderRadius:3,background:'#141400',border:`1.5px solid ${GD}`,display:'flex',alignItems:'center',justifyContent:'center',color:G,fontSize:10,fontWeight:800,fontFamily:F,flexShrink:0}}>{p.member_name?p.member_name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2):'?'}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{color:'#fff',fontSize:13,fontWeight:700,fontFamily:F,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{p.member_id===member.id?'You':p.member_name}</div>
+                  <div style={{display:'flex',alignItems:'center',gap:5,marginTop:3,flexWrap:'wrap'}}>
+                    <span style={{padding:'1px 5px',background:bc(p.old_belt),borderRadius:2,fontSize:8,fontWeight:800,fontFamily:F,color:btx(p.old_belt),letterSpacing:1,textTransform:'uppercase'}}>{p.old_belt}{!kids(p.old_belt)&&p.old_stripes>0?` ${p.old_stripes}s`:''}</span>
+                    <span style={{color:'#333',fontSize:11}}>→</span>
+                    <span style={{padding:'1px 5px',background:bc(p.new_belt),borderRadius:2,fontSize:8,fontWeight:800,fontFamily:F,color:btx(p.new_belt),letterSpacing:1,textTransform:'uppercase'}}>{p.new_belt}{!kids(p.new_belt)&&p.new_stripes>0?` ${p.new_stripes}s`:''}</span>
+                  </div>
+                </div>
+                <div style={{color:'#333',fontSize:11,fontFamily:F,flexShrink:0}}>{fmtD(p.promoted_at)}</div>
+              </div>;
+            })}
+          </div>
+        </Card>}
+
       </div>}
 
       {view==='journal'&&<div>
