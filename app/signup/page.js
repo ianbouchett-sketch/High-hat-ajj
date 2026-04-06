@@ -9,7 +9,7 @@ const inp={width:'100%',background:'#111',border:`1px solid ${BL}`,borderRadius:
 const ADULT_BELTS=['White','Blue','Purple','Brown','Black'];
 const KIDS_BELTS=['White','Grey','Yellow','Orange','Green'];
 const HEARD=['','Friend/Family','Social Media','Google Search','Drove By','Other'];
-const GENDERS=['','Male','Female','Non-binary','Prefer not to say'];
+const GENDERS=['','Male','Female'];
 
 function FL({children,req,optional}){
   return <div style={{color:GD,fontSize:10,letterSpacing:1.5,textTransform:'uppercase',marginBottom:6,fontWeight:800,fontFamily:F,display:'flex',alignItems:'center',gap:6}}>
