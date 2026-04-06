@@ -436,7 +436,7 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
                       <TPill type={c.type}/>
                       {c.instructor&&<span style={{color:'#555',fontSize:13,fontFamily:FB}}>{c.instructor}</span>}
                       <button onClick={()=>toggleAttendance(c.id)} style={{marginLeft:'auto',padding:'5px 12px',background:going?G:'transparent',border:`1px solid ${going?G:BL}`,borderRadius:20,color:going?'#000':'#555',fontSize:11,fontWeight:800,fontFamily:F,letterSpacing:.5,cursor:'pointer',flexShrink:0}}>
-                        {going?'✓ Going':'I'll be there'}
+                        {going?'✓ Going':'I\'ll be there'}
                       </button>
                     </div>
                     {attendees.length>0&&<div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap',paddingTop:6,borderTop:`1px solid ${BL}`}}>
