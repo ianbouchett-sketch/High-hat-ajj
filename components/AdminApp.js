@@ -184,6 +184,37 @@ function DetailModal({id,members,setMembers,onClose}){
   const [generatedLink,setGeneratedLink]=useState(null);
   const [genLoading,setGenLoading]=useState(false);
   const [showLink,setShowLink]=useState(false);
+  const [showEditInfo,setShowEditInfo]=useState(false);
+  const [editName,setEditName]=useState(m?.name||'');
+  const [editPhone,setEditPhone]=useState(m?.phone||'');
+  const [editDOB,setEditDOB]=useState(m?.date_of_birth||'');
+  const [pwResetSent,setPwResetSent]=useState(false);
+  const [uploading,setUploading]=useState(false);
+
+  async function saveInfo(){
+    setSv(true);
+    await supabase.from('members').update({name:editName,phone:editPhone,date_of_birth:editDOB||null}).eq('id',id);
+    setMembers(ms=>ms.map(x=>x.id===id?{...x,name:editName,phone:editPhone,date_of_birth:editDOB||null}:x));
+    setSv(false);setShowEditInfo(false);
+  }
+  async function sendPasswordReset(){
+    if(!m.email)return;
+    await supabase.auth.resetPasswordForEmail(m.email,{redirectTo:'https://high-hat-ajj.vercel.app/reset-password'});
+    setPwResetSent(true);setTimeout(()=>setPwResetSent(false),4000);
+  }
+  async function uploadAvatar(file){
+    if(!file)return;
+    setUploading(true);
+    const ext=file.name.split('.').pop();
+    const path=`${id}/avatar.${ext}`;
+    const{error:upErr}=await supabase.storage.from('avatars').upload(path,file,{upsert:true});
+    if(!upErr){
+      const{data:{publicUrl}}=supabase.storage.from('avatars').getPublicUrl(path);
+      await supabase.from('members').update({avatar_url:publicUrl}).eq('id',id);
+      setMembers(ms=>ms.map(x=>x.id===id?{...x,avatar_url:publicUrl}:x));
+    }
+    setUploading(false);
+  }
   const [selectedPrimary,setSelectedPrimary]=useState(m?.primary_member_id||'');
   if(!m)return null;
   const od=m.status==='overdue'&&m.last_payment?dOD(m.last_payment):0;
@@ -246,13 +277,33 @@ function DetailModal({id,members,setMembers,onClose}){
   const statusColor={active:GRN,overdue:ORG,pending:BLUE,inactive:'#444'};
 
   return <Modal open title="Member" onClose={onClose} wide ch={<>
-    <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:20,background:SURF,borderRadius:10,padding:'14px 16px'}}>
-      <div style={{width:52,height:52,borderRadius:10,background:GK,border:`2px solid ${G}`,display:'flex',alignItems:'center',justifyContent:'center',color:G,fontSize:18,fontWeight:800,fontFamily:F,flexShrink:0}}>{ini(m.name)}</div>
-      <div style={{flex:1}}>
-        <div style={{color:'#fff',fontSize:20,fontWeight:800,fontFamily:FB}}>{m.name}</div>
-        <div style={{color:'#555',fontSize:13,fontFamily:FB,marginTop:1}}>{m.email}</div>
-        <div style={{marginTop:8,display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}><BB belt={m.belt||'White'} stripes={m.stripes||0} lg/><div style={{display:'flex',alignItems:'center',gap:5}}><SDot status={m.status}/><span style={{color:statusColor[m.status]||'#444',fontSize:13,fontFamily:F,fontWeight:800}}>{m.status}</span></div></div>
+    <div style={{background:SURF,borderRadius:10,padding:'14px 16px',marginBottom:20}}>
+      <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:12}}>
+        <div style={{position:'relative',flexShrink:0}}>
+          {m.avatar_url
+            ?<img src={m.avatar_url} alt={m.name} style={{width:58,height:58,borderRadius:10,objectFit:'cover',border:`2px solid ${G}40`}}/>
+            :<div style={{width:58,height:58,borderRadius:10,background:GK,border:`2px solid ${G}40`,display:'flex',alignItems:'center',justifyContent:'center',color:G,fontSize:18,fontWeight:800,fontFamily:F}}>{ini(m.name)}</div>
+          }
+          <label style={{position:'absolute',bottom:-4,right:-4,width:20,height:20,background:G,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:11}}>
+            {uploading?'…':'📷'}
+            <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>e.target.files[0]&&uploadAvatar(e.target.files[0])}/>
+          </label>
+        </div>
+        <div style={{flex:1}}>
+          <div style={{color:'#fff',fontSize:20,fontWeight:800,fontFamily:FB}}>{m.name}</div>
+          <div style={{color:'#555',fontSize:13,fontFamily:FB,marginTop:1}}>{m.email}</div>
+          <div style={{marginTop:8,display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}><BB belt={m.belt||'White'} stripes={m.stripes||0} lg/><div style={{display:'flex',alignItems:'center',gap:5}}><SDot status={m.status}/><span style={{color:statusColor[m.status]||'#444',fontSize:13,fontFamily:F,fontWeight:800}}>{m.status}</span></div></div>
+        </div>
+        <button onClick={()=>setShowEditInfo(!showEditInfo)} style={{padding:'6px 12px',background:'transparent',border:`1px solid ${BL}`,borderRadius:6,color:'#777',fontSize:11,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',flexShrink:0}}>Edit</button>
       </div>
+      {showEditInfo&&<div style={{borderTop:`1px solid ${BL}`,paddingTop:12,display:'flex',flexDirection:'column',gap:10}}>
+        <div><FL ch="Name"/><input value={editName} onChange={e=>setEditName(e.target.value)} style={{...inpStyle,fontSize:15,padding:'10px 14px'}}/></div>
+        <div style={{display:'flex',gap:10}}>
+          <div style={{flex:1}}><FL ch="Phone"/><input value={editPhone} onChange={e=>setEditPhone(e.target.value)} placeholder="802-555-0000" style={{...inpStyle,fontSize:15,padding:'10px 14px'}}/></div>
+          <div style={{flex:1}}><FL ch="Date of Birth"/><input type="date" value={editDOB} onChange={e=>setEditDOB(e.target.value)} style={{...inpStyle,fontSize:15,padding:'10px 14px'}}/></div>
+        </div>
+        <GBtn ch={sv?'Saving...':'Save Info'} onClick={saveInfo} sm disabled={sv} style={{alignSelf:'flex-start'}}/>
+      </div>}
     </div>
     {(m.phone||m.emergency_contact)&&<div style={{background:SURF,borderRadius:8,padding:'12px 14px',marginBottom:12}}>
       {m.phone&&<div style={{color:'#888',fontSize:14,fontFamily:FB,marginBottom:3}}>📱 {m.phone}</div>}
@@ -273,7 +324,10 @@ function DetailModal({id,members,setMembers,onClose}){
         <div><div style={{color:'#444',fontSize:11,fontFamily:FB,marginBottom:3}}>Last paid</div><div style={{color:'#fff',fontSize:15,fontWeight:700,fontFamily:FB}}>{m.last_payment?fmt(m.last_payment):'—'}</div></div>
         <div style={{textAlign:'right'}}><div style={{color:'#444',fontSize:11,fontFamily:FB,marginBottom:3}}>Next due</div><div style={{color:m.status==='overdue'?ORG:GRN,fontSize:15,fontWeight:700,fontFamily:FB}}>{m.last_payment?nxPay(m.last_payment):'—'}</div></div>
       </div>
-      {m.stripe_customer_id&&<a href={`https://dashboard.stripe.com/customers/${m.stripe_customer_id}`} target="_blank" rel="noreferrer" style={{display:'block',textAlign:'center',padding:'8px',border:`1px solid ${BL}`,borderRadius:6,color:GD,fontSize:12,fontFamily:F,letterSpacing:1,textTransform:'uppercase',textDecoration:'none'}}>View in Stripe ↗</a>}
+      {m.stripe_customer_id&&<a href={`https://dashboard.stripe.com/customers/${m.stripe_customer_id}`} target="_blank" rel="noreferrer" style={{display:'block',textAlign:'center',padding:'8px',border:`1px solid ${BL}`,borderRadius:6,color:GD,fontSize:12,fontFamily:F,letterSpacing:1,textTransform:'uppercase',textDecoration:'none',marginTop:8}}>View in Stripe ↗</a>}
+      <button onClick={sendPasswordReset} style={{width:'100%',marginTop:8,padding:'9px',background:'transparent',border:`1px solid ${BL}`,borderRadius:6,color:pwResetSent?GRN:'#555',fontSize:11,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>
+        {pwResetSent?'✓ Reset Email Sent':'Send Password Reset Email'}
+      </button>
     </div>
 
     {/* Belt */}
@@ -506,7 +560,10 @@ function RecentPromotions(){
           {p.promoted_by==='self'&&<span style={{color:BLUE,fontSize:9,fontFamily:F,fontWeight:700,letterSpacing:1,textTransform:'uppercase'}}>self</span>}
         </div>
       </div>
-      <div style={{color:'#333',fontSize:12,fontFamily:F,flexShrink:0}}>{fmt(p.promoted_at)}</div>
+      <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4,flexShrink:0}}>
+        <div style={{color:'#333',fontSize:12,fontFamily:F}}>{fmt(p.promoted_at)}</div>
+        <button onClick={async()=>{if(!window.confirm('Delete this promotion record?'))return;await supabase.from('promotions').delete().eq('id',p.id);setPromos(ps=>ps.filter(x=>x.id!==p.id));}} style={{padding:'2px 8px',background:'transparent',border:'1px solid #4a1000',borderRadius:4,color:'#7a2a00',fontSize:9,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>Delete</button>
+      </div>
     </div>)}
   </div>;
 }

@@ -113,22 +113,75 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
   const [expandedId,setExpandedId]=useState(null);
   const [saving,setSaving]=useState(false);
   const [community,setCommunity]=useState({topTrainers:[],recentPromos:[],loaded:false});
+  const [likes,setLikes]=useState({}); // promoId -> {count, liked}
+  const [attendance,setAttendance]=useState({}); // scheduleId -> [memberNames]
+  const [myAttendance,setMyAttendance]=useState(new Set());
   const [showPromo,setShowPromo]=useState(false);
   const [promoConfirm,setPromoConfirm]=useState(false);
   const [promoBelt,setPromoBelt]=useState('');
   const [promoStripes,setPromoStripes]=useState(0);
   const [promoSaving,setPromoSaving]=useState(false);
 
+  // Get Monday of current week
+  function getWeekStart(){
+    const d=new Date();const day=d.getDay();const diff=d.getDate()-(day===0?6:day-1);
+    const mon=new Date(d.setDate(diff));return mon.toISOString().split('T')[0];
+  }
+
   useEffect(()=>{
     async function loadCommunity(){
-      const[{data:trainers},{data:promos}]=await Promise.all([
+      const weekStart=getWeekStart();
+      const[{data:trainers},{data:promos},{data:likeData},{data:attData},{data:myAtt}]=await Promise.all([
         supabase.from('members').select('id,name,belt,stripes,sessions').eq('status','active').order('sessions',{ascending:false}).limit(10),
         supabase.from('promotions').select('*').order('promoted_at',{ascending:false}).limit(8),
+        supabase.from('promotion_likes').select('promotion_id,member_id'),
+        supabase.from('attendance_plans').select('schedule_id,member_id,members(name)').eq('week_start',weekStart),
+        supabase.from('attendance_plans').select('schedule_id').eq('member_id',initialMember?.id||'').eq('week_start',weekStart),
       ]);
       setCommunity({topTrainers:trainers||[],recentPromos:promos||[],loaded:true});
+      // Build likes map
+      const lMap={};
+      (likeData||[]).forEach(l=>{
+        if(!lMap[l.promotion_id])lMap[l.promotion_id]={count:0,liked:false};
+        lMap[l.promotion_id].count++;
+        if(l.member_id===initialMember?.id)lMap[l.promotion_id].liked=true;
+      });
+      setLikes(lMap);
+      // Build attendance map
+      const aMap={};
+      (attData||[]).forEach(a=>{
+        if(!aMap[a.schedule_id])aMap[a.schedule_id]=[];
+        if(a.members?.name)aMap[a.schedule_id].push({id:a.member_id,name:a.members.name});
+      });
+      setAttendance(aMap);
+      setMyAttendance(new Set((myAtt||[]).map(a=>a.schedule_id)));
     }
     loadCommunity();
   },[]);
+
+  async function toggleLike(promoId){
+    const current=likes[promoId]||{count:0,liked:false};
+    if(current.liked){
+      await supabase.from('promotion_likes').delete().eq('promotion_id',promoId).eq('member_id',member.id);
+      setLikes(l=>({...l,[promoId]:{count:Math.max(0,(l[promoId]?.count||1)-1),liked:false}}));
+    } else {
+      await supabase.from('promotion_likes').insert({promotion_id:promoId,member_id:member.id});
+      setLikes(l=>({...l,[promoId]:{count:(l[promoId]?.count||0)+1,liked:true}}));
+    }
+  }
+
+  async function toggleAttendance(scheduleId){
+    const weekStart=getWeekStart();
+    if(myAttendance.has(scheduleId)){
+      await supabase.from('attendance_plans').delete().eq('member_id',member.id).eq('schedule_id',scheduleId).eq('week_start',weekStart);
+      setMyAttendance(s=>{const n=new Set(s);n.delete(scheduleId);return n;});
+      setAttendance(a=>{const n={...a};if(n[scheduleId])n[scheduleId]=n[scheduleId].filter(x=>x.id!==member.id);return n;});
+    } else {
+      await supabase.from('attendance_plans').insert({member_id:member.id,schedule_id:scheduleId,week_start:weekStart});
+      setMyAttendance(s=>new Set([...s,scheduleId]));
+      setAttendance(a=>({...a,[scheduleId]:[...(a[scheduleId]||[]),{id:member.id,name:member.name}]}));
+    }
+  }
 
   const isKidsMember=member.date_of_birth?(()=>{const d=new Date(member.date_of_birth),now=new Date();let a=now.getFullYear()-d.getFullYear();if(now.getMonth()<d.getMonth()||(now.getMonth()===d.getMonth()&&now.getDate()<d.getDate()))a--;return a<16;})():false;
   const beltOrder=isKidsMember?KIDS_BELT_ORDER:ADULT_BELT_ORDER;
@@ -190,7 +243,10 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
           <div style={{height:3,background:`linear-gradient(90deg,${G}80,transparent)`}}/>
           <div style={{padding:'22px 20px'}}>
             <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:22}}>
-              <div style={{width:58,height:58,borderRadius:10,background:member.avatar_color||GK,border:`2px solid ${G}40`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,fontWeight:800,color:G,fontFamily:F,letterSpacing:1.5,flexShrink:0}}>{ini(member.name)}</div>
+              {member.avatar_url
+                ?<img src={member.avatar_url} alt={member.name} style={{width:58,height:58,borderRadius:10,objectFit:'cover',border:`2px solid ${G}40`,flexShrink:0}}/>
+                :<div style={{width:58,height:58,borderRadius:10,background:member.avatar_color||GK,border:`2px solid ${G}40`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,fontWeight:800,color:G,fontFamily:F,letterSpacing:1.5,flexShrink:0}}>{ini(member.name)}</div>
+              }
               <div>
                 <div style={{color:'#fff',fontSize:24,fontWeight:800,fontFamily:FB,lineHeight:1}}>{member.name}</div>
                 <div style={{color:'#555',fontSize:12,marginTop:5,fontFamily:FB}}>Member since {member.joined_at?new Date(member.joined_at).toLocaleDateString('en-US',{month:'long',year:'numeric'}):'—'}</div>
@@ -320,7 +376,13 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
                   <span style={{padding:'2px 6px',background:bc(p.new_belt),borderRadius:3,fontSize:9,fontWeight:800,fontFamily:F,color:btx(p.new_belt),letterSpacing:1,textTransform:'uppercase'}}>{p.new_belt}{!kids(p.new_belt)&&p.new_stripes>0?` ${p.new_stripes}s`:''}</span>
                 </div>
               </div>
-              <div style={{color:'#333',fontSize:12,fontFamily:F,flexShrink:0}}>{ago(p.promoted_at)}</div>
+              <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:6,flexShrink:0}}>
+                <div style={{color:'#333',fontSize:12,fontFamily:F}}>{ago(p.promoted_at)}</div>
+                <button onClick={()=>toggleLike(p.id)} style={{display:'flex',alignItems:'center',gap:4,padding:'4px 10px',background:likes[p.id]?.liked?GK:'transparent',border:`1px solid ${likes[p.id]?.liked?G:BL}`,borderRadius:20,cursor:'pointer'}}>
+                  <span style={{fontSize:14}}>👊</span>
+                  <span style={{color:likes[p.id]?.liked?G:'#555',fontSize:11,fontWeight:800,fontFamily:F,letterSpacing:.5}}>OSS{likes[p.id]?.count>0?` ${likes[p.id].count}`:''}</span>
+                </button>
+              </div>
             </div>;
           })}
         </div></Card>}
@@ -364,12 +426,26 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
               </div>
               <div style={{flex:1,minWidth:0}}>
                 {cls.length===0?<span style={{color:'#333',fontSize:14,fontFamily:FB}}>Rest Day</span>
-                :cls.map(c=><div key={c.id} style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginBottom:8,padding:'8px 10px',background:SURF,borderRadius:6}}>
-                  <span style={{color:G,fontSize:16,fontWeight:900,fontFamily:FN,flexShrink:0}}>{c.start_time.slice(0,5)}</span>
-                  <span style={{color:'#fff',fontSize:14,fontWeight:600,fontFamily:FB}}>{c.class_name}</span>
-                  <TPill type={c.type}/>
-                  {c.instructor&&<span style={{color:'#555',fontSize:13,fontFamily:FB}}>{c.instructor}</span>}
-                </div>)}
+                :cls.map(c=>{
+                  const going=myAttendance.has(c.id);
+                  const attendees=attendance[c.id]||[];
+                  return <div key={c.id} style={{marginBottom:8,padding:'10px 12px',background:SURF,borderRadius:8,border:`1px solid ${going?G+'40':BL}`}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginBottom:attendees.length>0?8:0}}>
+                      <span style={{color:G,fontSize:16,fontWeight:900,fontFamily:FN,flexShrink:0}}>{c.start_time.slice(0,5)}</span>
+                      <span style={{color:'#fff',fontSize:14,fontWeight:600,fontFamily:FB}}>{c.class_name}</span>
+                      <TPill type={c.type}/>
+                      {c.instructor&&<span style={{color:'#555',fontSize:13,fontFamily:FB}}>{c.instructor}</span>}
+                      <button onClick={()=>toggleAttendance(c.id)} style={{marginLeft:'auto',padding:'5px 12px',background:going?G:'transparent',border:`1px solid ${going?G:BL}`,borderRadius:20,color:going?'#000':'#555',fontSize:11,fontWeight:800,fontFamily:F,letterSpacing:.5,cursor:'pointer',flexShrink:0}}>
+                        {going?'✓ Going':'I'll be there'}
+                      </button>
+                    </div>
+                    {attendees.length>0&&<div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap',paddingTop:6,borderTop:`1px solid ${BL}`}}>
+                      <span style={{color:'#444',fontSize:11,fontFamily:F,fontWeight:700,letterSpacing:1,textTransform:'uppercase'}}>{attendees.length} going:</span>
+                      {attendees.slice(0,5).map(a=><span key={a.id} style={{padding:'2px 8px',background:a.id===member.id?GK:'#1a1a1a',border:`1px solid ${a.id===member.id?G:BL}`,borderRadius:10,fontSize:11,fontFamily:FB,color:a.id===member.id?G:'#888'}}>{a.id===member.id?'You':a.name.split(' ')[0]}</span>)}
+                      {attendees.length>5&&<span style={{color:'#444',fontSize:11,fontFamily:F}}>+{attendees.length-5} more</span>}
+                    </div>}
+                  </div>;
+                })}
               </div>
             </div>
           </div>;
@@ -383,7 +459,10 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
           <GhBtn onClick={openEdit}>Edit</GhBtn>
         </div>
         <Card><div style={{padding:'20px 18px',display:'flex',alignItems:'flex-start',gap:14}}>
-          <div style={{width:58,height:58,borderRadius:10,background:member.avatar_color||GK,border:`2px solid ${G}40`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,fontWeight:800,color:G,fontFamily:F,letterSpacing:1.5,flexShrink:0}}>{ini(member.name)}</div>
+          {member.avatar_url
+            ?<img src={member.avatar_url} alt={member.name} style={{width:58,height:58,borderRadius:10,objectFit:'cover',border:`2px solid ${G}40`,flexShrink:0}}/>
+            :<div style={{width:58,height:58,borderRadius:10,background:member.avatar_color||GK,border:`2px solid ${G}40`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,fontWeight:800,color:G,fontFamily:F,letterSpacing:1.5,flexShrink:0}}>{ini(member.name)}</div>
+          }
           <div style={{flex:1}}>
             <div style={{color:'#fff',fontSize:20,fontWeight:800,fontFamily:FB}}>{member.name}</div>
             <div style={{color:'#555',fontSize:13,marginTop:2,fontFamily:FB}}>{member.email}</div>
