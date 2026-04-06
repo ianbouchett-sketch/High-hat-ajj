@@ -147,6 +147,7 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
   }
 
   useEffect(()=>{
+    if(view!=='home')return;
     async function loadCommunity(){
       const weekStart=getWeekStart();
       const[communityRes,{data:likeData},{data:attData},{data:myAtt}]=await Promise.all([
@@ -176,7 +177,7 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
       setMyAttendance(new Set((myAtt||[]).map(a=>a.schedule_id)));
     }
     loadCommunity();
-  },[]);
+  },[view]);
 
   async function toggleLike(promoId){
     const current=likes[promoId]||{count:0,liked:false};
