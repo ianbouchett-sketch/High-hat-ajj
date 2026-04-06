@@ -7,7 +7,7 @@ const F="'Barlow Condensed','Arial Narrow',Arial,sans-serif";
 const FB="'Barlow','Arial Narrow',Arial,sans-serif";
 const inp={width:'100%',background:'#111',border:`1px solid ${BL}`,borderRadius:3,padding:'11px 14px',color:'#fff',fontSize:15,outline:'none',fontFamily:FB,boxSizing:'border-box',WebkitAppearance:'none',colorScheme:'dark'};
 const ADULT_BELTS=['White','Blue','Purple','Brown','Black'];
-const KIDS_BELTS=['Grey','Yellow','Orange','Green'];
+const KIDS_BELTS=['White','Grey','Yellow','Orange','Green'];
 const HEARD=['','Friend/Family','Social Media','Google Search','Drove By','Other'];
 const GENDERS=['','Male','Female','Non-binary','Prefer not to say'];
 

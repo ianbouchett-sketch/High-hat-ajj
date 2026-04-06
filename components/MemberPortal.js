@@ -31,7 +31,7 @@ function SLabel({children}){return <div style={{display:'flex',alignItems:'cente
 function GBtn({children,onClick,style={}}){return <button onClick={onClick} style={{padding:'9px 18px',background:G,border:'none',borderRadius:3,color:'#000',fontWeight:800,fontSize:12,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',...style}}>{children}</button>}
 function GhBtn({children,onClick,style={}}){return <button onClick={onClick} style={{padding:'7px 14px',background:'transparent',border:`1px solid ${BL}`,borderRadius:3,color:'#555',fontSize:11,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',...style}}>{children}</button>}
 function TPill({type}){const c=TYPE_CFG[type]||TYPE_CFG.Other;return <span style={{padding:'2px 7px',background:c.bg,border:`1px solid ${c.br}`,borderRadius:2,fontSize:9,fontWeight:800,fontFamily:F,color:'#fff',letterSpacing:1,textTransform:'uppercase'}}>{type}</span>}
-const KIDS_BELTS=['Grey','Yellow','Orange','Green'];
+const KIDS_BELTS=['White','Grey','Yellow','Orange','Green'];
 const isKidsBelt=b=>KIDS_BELTS.includes(b);
 function BeltBar({belt,stripes}){
   const c=BELT_CFG[belt]||BELT_CFG.White,sc=belt==='White'?'#111':'#fff';
