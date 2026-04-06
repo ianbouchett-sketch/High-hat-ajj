@@ -467,6 +467,8 @@ function ScheduleView({schedule,setSchedule}){
   const [modal,setModal]=useState(null);
   const [form,setForm]=useState({day_of_week:1,start_time:'18:30',class_name:'',type:'Gi',instructor:''});
   const [sv,setSv]=useState(false);
+  const [confirmDelId,setConfirmDelId]=useState(null);
+  const [confirmDelName,setConfirmDelName]=useState('');
   async function openEdit(c){setModal(c?c.id:'new');setForm(c?{day_of_week:c.day_of_week,start_time:c.start_time,class_name:c.class_name,type:c.type,instructor:c.instructor||''}:{day_of_week:1,start_time:'18:30',class_name:'',type:'Gi',instructor:''});}
   async function save(){
     if(!form.class_name.trim())return;
@@ -485,8 +487,13 @@ function ScheduleView({schedule,setSchedule}){
     }
     setSv(false);setModal(null);
   }
-  async function del(id,name){
-    if(!window.confirm(`Remove "${name}" from the schedule?`))return;
+  function del(id,name){
+    setConfirmDelId(id);
+    setConfirmDelName(name);
+  }
+  async function confirmDel(){
+    const id=confirmDelId;
+    setConfirmDelId(null);
     const res=await fetch('/api/schedule',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
     const d=await res.json();
     if(d.success)setSchedule(s=>s.filter(c=>c.id!==id));
@@ -535,6 +542,14 @@ function ScheduleView({schedule,setSchedule}){
         <button onClick={()=>del(c.id,c.class_name)} style={{padding:'4px 10px',background:'transparent',border:'1px solid #4a1000',borderRadius:4,color:'#7a2a00',fontSize:10,fontFamily:F,cursor:'pointer'}}>×</button>
       </div>
     </div>)}
+    <Modal open={confirmDelId!==null} onClose={()=>setConfirmDelId(null)} title="Remove Class" ch={<div style={{display:'flex',flexDirection:'column',gap:16}}>
+      <div style={{color:'#888',fontSize:15,fontFamily:FB,lineHeight:1.6}}>Remove <strong style={{color:'#fff'}}>{confirmDelName}</strong> from the schedule?</div>
+      <div style={{display:'flex',gap:10}}>
+        <GhBtn ch="Keep It" onClick={()=>setConfirmDelId(null)} style={{flex:1}}/>
+        <DBtn ch="Yes, Remove" onClick={confirmDel} style={{flex:1}}/>
+      </div>
+    </div>}/>
+
     <Modal open={modal!==null} onClose={()=>setModal(null)} title={modal==='new'?'Add Class':'Edit Class'} ch={<div style={{display:'flex',flexDirection:'column',gap:14}}>
       <div style={{display:'flex',gap:12}}><div style={{flex:1}}><FL ch="Day"/><FS value={form.day_of_week} onChange={e=>setForm(f=>({...f,day_of_week:+e.target.value}))} options={DAYS.map((d,i)=>({v:i,l:d}))}/></div><div style={{flex:1}}><FL ch="Time"/><input type="time" value={form.start_time} onChange={e=>setForm(f=>({...f,start_time:e.target.value}))} style={inpStyle}/></div></div>
       <div><FL ch="Class Name"/><FI value={form.class_name} onChange={e=>setForm(f=>({...f,class_name:e.target.value}))} placeholder="e.g. Fundamentals"/></div>
