@@ -6,7 +6,9 @@ const G='#c9a227',GD='#8a6e18',BG='#060606',CARD='#0d0d0b',BL='#2e2600',ORG='#c9
 const F="'Barlow Condensed','Arial Narrow',Arial,sans-serif";
 const FB="'Barlow','Arial Narrow',Arial,sans-serif";
 const inp={width:'100%',background:'#111',border:`1px solid ${BL}`,borderRadius:3,padding:'11px 14px',color:'#fff',fontSize:15,outline:'none',fontFamily:FB,boxSizing:'border-box',WebkitAppearance:'none'};
-const BELTS=['White','Blue','Purple','Brown','Black'];
+const BELTS=['White','Blue','Purple','Brown','Black','Grey','Yellow','Orange','Green'];
+const KIDS_BELTS=['Grey','Yellow','Orange','Green'];
+const isKidsBelt=b=>KIDS_BELTS.includes(b);
 
 function FL({children}){return <div style={{color:GD,fontSize:10,letterSpacing:1.5,textTransform:'uppercase',marginBottom:6,fontWeight:800,fontFamily:F}}>{children}</div>}
 
@@ -101,16 +103,16 @@ export default function SignupPage(){
                 <div style={{display:'flex',gap:12}}>
                   <div style={{flex:1}}>
                     <FL>Current Belt</FL>
-                    <select style={inp} value={form.belt} onChange={e=>set('belt',e.target.value)}>
+                    <select style={inp} value={form.belt} onChange={e=>{set('belt',e.target.value);if(isKidsBelt(e.target.value))set('stripes','0');}}>
                       {BELTS.map(b=><option key={b}>{b}</option>)}
                     </select>
                   </div>
-                  <div style={{flex:1}}>
+                  {!isKidsBelt(form.belt)&&<div style={{flex:1}}>
                     <FL>Stripes</FL>
                     <select style={inp} value={form.stripes} onChange={e=>set('stripes',e.target.value)}>
                       {[0,1,2,3,4].map(n=><option key={n} value={n}>{n}</option>)}
                     </select>
-                  </div>
+                  </div>}
                 </div>
                 <div style={{height:1,background:BL,margin:'4px 0'}}/>
                 <div><FL>Password</FL><input style={inp} type="password" value={form.password} onChange={e=>set('password',e.target.value)} placeholder="Min 6 characters"/></div>

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 const G='#c9a227',GD='#8a6e18',GK='#1a1600',BG='#060606',CARD='#0d0d0b',BL='#2e2600',GRN='#4a9e4a',ORG='#c97316';
 const F="'Barlow Condensed','Arial Narrow',Arial,sans-serif";
 const FB="'Barlow','Arial Narrow',Arial,sans-serif";
-const BELT_CFG={White:{bg:'#e8e8e0',tx:'#111',br:'#bbb',gl:'rgba(220,220,210,.08)'},Blue:{bg:'#1a3a6e',tx:'#fff',br:'#2a5aae',gl:'rgba(42,90,174,.15)'},Purple:{bg:'#3e1460',tx:'#fff',br:'#6a2aaa',gl:'rgba(106,42,170,.18)'},Brown:{bg:'#4a2000',tx:'#fff',br:'#7a3e10',gl:'rgba(122,62,16,.15)'},Black:{bg:'#0a0a0a',tx:'#fff',br:'#3a3a3a',gl:'rgba(255,255,255,.04)'}};
+const BELT_CFG={White:{bg:'#e8e8e0',tx:'#111',br:'#bbb',gl:'rgba(220,220,210,.08)'},Blue:{bg:'#1a3a6e',tx:'#fff',br:'#2a5aae',gl:'rgba(42,90,174,.15)'},Purple:{bg:'#3e1460',tx:'#fff',br:'#6a2aaa',gl:'rgba(106,42,170,.18)'},Brown:{bg:'#4a2000',tx:'#fff',br:'#7a3e10',gl:'rgba(122,62,16,.15)'},Black:{bg:'#0a0a0a',tx:'#fff',br:'#3a3a3a',gl:'rgba(255,255,255,.04)'},Grey:{bg:'#888',tx:'#fff',br:'#aaa',gl:'rgba(150,150,150,.08)'},Yellow:{bg:'#c9a227',tx:'#000',br:'#a07800',gl:'rgba(200,160,40,.12)'},Orange:{bg:'#c97316',tx:'#fff',br:'#a05010',gl:'rgba(200,115,22,.12)'},Green:{bg:'#2a6a2a',tx:'#fff',br:'#1a4a1a',gl:'rgba(42,106,42,.12)'}};
 const TYPE_CFG={'Gi':{bg:'#1a3a6e',br:'#2a5aae'},'No-Gi':{bg:'#4a1a1a',br:'#8a2a2a'},Wrestling:{bg:'#1a3a1a',br:'#2a6a2a'},Judo:{bg:'#3a1a00',br:'#7a4a00'},'Open Mat':{bg:'#1a1a3a',br:'#3a3a8a'},Other:{bg:'#222',br:'#444'}};
 const DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const DAYSS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -31,14 +31,17 @@ function SLabel({children}){return <div style={{display:'flex',alignItems:'cente
 function GBtn({children,onClick,style={}}){return <button onClick={onClick} style={{padding:'9px 18px',background:G,border:'none',borderRadius:3,color:'#000',fontWeight:800,fontSize:12,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',...style}}>{children}</button>}
 function GhBtn({children,onClick,style={}}){return <button onClick={onClick} style={{padding:'7px 14px',background:'transparent',border:`1px solid ${BL}`,borderRadius:3,color:'#555',fontSize:11,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',...style}}>{children}</button>}
 function TPill({type}){const c=TYPE_CFG[type]||TYPE_CFG.Other;return <span style={{padding:'2px 7px',background:c.bg,border:`1px solid ${c.br}`,borderRadius:2,fontSize:9,fontWeight:800,fontFamily:F,color:'#fff',letterSpacing:1,textTransform:'uppercase'}}>{type}</span>}
+const KIDS_BELTS=['Grey','Yellow','Orange','Green'];
+const isKidsBelt=b=>KIDS_BELTS.includes(b);
 function BeltBar({belt,stripes}){
   const c=BELT_CFG[belt]||BELT_CFG.White,sc=belt==='White'?'#111':'#fff';
+  const kids=isKidsBelt(belt);
   return <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:8}}>
-    <div style={{width:180,height:28,background:c.bg,border:`2px solid ${c.br}`,borderRadius:3,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 10px',boxShadow:`0 0 24px ${c.gl}`}}>
+    <div style={{width:kids?140:180,height:28,background:c.bg,border:`2px solid ${c.br}`,borderRadius:3,display:'flex',alignItems:'center',justifyContent:kids?'center':'space-between',padding:'0 10px',boxShadow:`0 0 24px ${c.gl}`}}>
       <span style={{fontSize:11,fontWeight:800,fontFamily:F,color:c.tx,letterSpacing:2,textTransform:'uppercase'}}>{belt} Belt</span>
-      <div style={{display:'flex',gap:3}}>{[0,1,2,3,4].map(i=><div key={i} style={{width:8,height:20,borderRadius:2,background:i<stripes?sc:'transparent',border:`1px solid ${i<stripes?sc:(belt==='White'?'#aaa':c.br)}`,opacity:i<stripes?1:0.25}}/>)}</div>
+      {!kids&&<div style={{display:'flex',gap:3}}>{[0,1,2,3,4].map(i=><div key={i} style={{width:8,height:20,borderRadius:2,background:i<stripes?sc:'transparent',border:`1px solid ${i<stripes?sc:(belt==='White'?'#aaa':c.br)}`,opacity:i<stripes?1:0.25}}/>)}</div>}
     </div>
-    <div style={{color:'#3a3200',fontSize:10,fontFamily:F,fontWeight:700,letterSpacing:1}}>{stripes} of 4 stripes</div>
+    {!kids&&<div style={{color:'#3a3200',fontSize:10,fontFamily:F,fontWeight:700,letterSpacing:1}}>{stripes} of 4 stripes</div>}
   </div>;
 }
 function Modal({open,onClose,title,children}){if(!open)return null;return <div onClick={e=>e.target===e.currentTarget&&onClose()} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.92)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}><div style={{background:'#0a0a0a',border:`1px solid ${BL}`,borderRadius:6,width:'100%',maxWidth:420,maxHeight:'90vh',overflowY:'auto'}}><div style={{height:3,background:G,opacity:.85}}/><div style={{padding:24}}><div style={{fontWeight:800,fontSize:18,letterSpacing:2,color:'#fff',textTransform:'uppercase',marginBottom:20,fontFamily:F}}>{title}</div>{children}</div></div></div>}

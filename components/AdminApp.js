@@ -5,11 +5,13 @@ import { supabase } from '@/lib/supabase';
 const G='#c9a227',GD='#8a6e18',GK='#1a1600',BG='#060606',CARD='#0d0d0b',BL='#2e2600',GRN='#4a9e4a',ORG='#c97316';
 const F="'Barlow Condensed','Arial Narrow',Arial,sans-serif";
 const FB="'Barlow','Arial Narrow',Arial,sans-serif";
-const BELT_CFG={White:{bg:'#e8e8e0',tx:'#111',br:'#bbb'},Blue:{bg:'#1a3a6e',tx:'#fff',br:'#2a5aae'},Purple:{bg:'#3e1460',tx:'#fff',br:'#6a2aaa'},Brown:{bg:'#4a2000',tx:'#fff',br:'#7a3e10'},Black:{bg:'#0a0a0a',tx:'#fff',br:'#3a3a3a'}};
+const BELT_CFG={White:{bg:'#e8e8e0',tx:'#111',br:'#bbb'},Blue:{bg:'#1a3a6e',tx:'#fff',br:'#2a5aae'},Purple:{bg:'#3e1460',tx:'#fff',br:'#6a2aaa'},Brown:{bg:'#4a2000',tx:'#fff',br:'#7a3e10'},Black:{bg:'#0a0a0a',tx:'#fff',br:'#3a3a3a'},Grey:{bg:'#888',tx:'#fff',br:'#aaa'},Yellow:{bg:'#c9a227',tx:'#000',br:'#a07800'},Orange:{bg:'#c97316',tx:'#fff',br:'#a05010'},Green:{bg:'#2a6a2a',tx:'#fff',br:'#1a4a1a'}};
 const TYPE_CFG={'Gi':{bg:'#1a3a6e',br:'#2a5aae'},'No-Gi':{bg:'#4a1a1a',br:'#8a2a2a'},Wrestling:{bg:'#1a3a1a',br:'#2a6a2a'},Judo:{bg:'#3a1a00',br:'#7a4a00'},'Open Mat':{bg:'#1a1a3a',br:'#3a3a8a'},Other:{bg:'#222',br:'#444'}};
 const DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const DAYSS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const BELTS=['White','Blue','Purple','Brown','Black'];
+const BELTS=['White','Blue','Purple','Brown','Black','Grey','Yellow','Orange','Green'];
+const KIDS_BELTS=['Grey','Yellow','Orange','Green'];
+const isKidsBelt=b=>KIDS_BELTS.includes(b);
 const TYPES=['Gi','No-Gi','Wrestling','Judo','Open Mat','Other'];
 const TODAY=new Date();
 const ini=n=>n?n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2):'?';
@@ -25,7 +27,7 @@ function Card({ch,style={}}){return <div style={{background:CARD,border:`1px sol
 function GBtn({ch,onClick,style={},small,disabled}){return <button onClick={onClick} disabled={disabled} style={{padding:small?'6px 14px':'9px 18px',background:G,border:'none',borderRadius:3,color:'#000',fontWeight:800,fontSize:small?11:13,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',opacity:disabled?.5:1,...style}}>{ch}</button>}
 function GhBtn({ch,onClick,style={}}){return <button onClick={onClick} style={{padding:'7px 14px',background:'transparent',border:`1px solid ${BL}`,borderRadius:3,color:'#555',fontSize:11,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',...style}}>{ch}</button>}
 function DBtn({ch,onClick,style={},disabled}){return <button onClick={onClick} disabled={disabled} style={{padding:'7px 14px',background:'transparent',border:'1px solid #7a2020',borderRadius:3,color:'#c94040',fontSize:11,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',opacity:disabled?.5:1,...style}}>{ch}</button>}
-function BB({belt,stripes,lg}){const c=BELT_CFG[belt]||BELT_CFG.White,sc=belt==='White'?'#111':'#fff';const h=lg?22:16,w=lg?90:64,sw=lg?6:4;return <div style={{display:'inline-flex',alignItems:'center',justifyContent:'space-between',background:c.bg,border:`1.5px solid ${c.br}`,borderRadius:2,width:w,height:h,padding:'0 4px',flexShrink:0,gap:2}}><span style={{fontSize:lg?9:7,fontWeight:800,fontFamily:F,color:c.tx,letterSpacing:1,textTransform:'uppercase'}}>{belt}</span><div style={{display:'flex',gap:2}}>{[0,1,2,3,4].map(i=><div key={i} style={{width:sw,height:h-4,borderRadius:1,background:i<stripes?sc:'transparent',border:`1px solid ${i<stripes?sc:(belt==='White'?'#aaa':c.br)}`,opacity:i<stripes?1:0.3}}/>)}</div></div>}
+function BB({belt,stripes,lg}){const c=BELT_CFG[belt]||BELT_CFG.White,sc=belt==='White'?'#111':'#fff';const kids=isKidsBelt(belt);const h=lg?22:16,w=kids?(lg?70:52):(lg?90:64),sw=lg?6:4;return <div style={{display:'inline-flex',alignItems:'center',justifyContent:'center',background:c.bg,border:`1.5px solid ${c.br}`,borderRadius:2,width:w,height:h,padding:'0 6px',flexShrink:0,gap:2}}><span style={{fontSize:lg?9:7,fontWeight:800,fontFamily:F,color:c.tx,letterSpacing:1,textTransform:'uppercase'}}>{belt}</span>{!kids&&<div style={{display:'flex',gap:2}}>{[0,1,2,3,4].map(i=><div key={i} style={{width:sw,height:h-4,borderRadius:1,background:i<stripes?sc:'transparent',border:`1px solid ${i<stripes?sc:(belt==='White'?'#aaa':c.br)}`,opacity:i<stripes?1:0.3}}/>)}</div>}</div>}
 function SDot({status}){return <span style={{display:'inline-block',width:7,height:7,borderRadius:'50%',background:{active:GRN,overdue:ORG,inactive:'#444',pending:'#3a7abd'}[status]||'#444',flexShrink:0}}/>}
 function TPill({type}){const c=TYPE_CFG[type]||TYPE_CFG.Other;return <span style={{padding:'2px 7px',background:c.bg,border:`1px solid ${c.br}`,borderRadius:2,fontSize:9,fontWeight:800,fontFamily:F,color:'#fff',letterSpacing:1,textTransform:'uppercase'}}>{type}</span>}
 function FL({ch}){return <div style={{color:GD,fontSize:10,letterSpacing:1.5,textTransform:'uppercase',marginBottom:6,fontWeight:800,fontFamily:F}}>{ch}</div>}
@@ -96,7 +98,7 @@ function RosterView({members,setMembers,openDetail}){
         <div><FL ch="Email"/><FI value={form.email} onChange={e=>setForm(f=>({...f,email:e.target.value}))} placeholder="member@example.com" type="email"/></div>
         <div style={{display:'flex',gap:12}}>
           <div style={{flex:1}}><FL ch="Belt"/><FS value={form.belt} onChange={e=>setForm(f=>({...f,belt:e.target.value}))} options={BELTS}/></div>
-          <div style={{flex:1}}><FL ch="Stripes"/><FS value={form.stripes} onChange={e=>setForm(f=>({...f,stripes:+e.target.value}))} options={[0,1,2,3,4].map(n=>({v:n,l:n}))}/></div>
+          {!isKidsBelt(form.belt)&&<div style={{flex:1}}><FL ch="Stripes"/><FS value={form.stripes} onChange={e=>setForm(f=>({...f,stripes:+e.target.value}))} options={[0,1,2,3,4].map(n=>({v:n,l:n}))}/></div>}
         </div>
         <div style={{display:'flex',gap:10,marginTop:4}}>
           <GhBtn ch="Cancel" onClick={()=>setAdd(false)} style={{flex:1}}/>
@@ -115,6 +117,24 @@ function DetailModal({id,members,setMembers,onClose}){
   const [conf,setConf]=useState(false);
   const [cancelling,setCanc]=useState(false);
   const [showPayLink,setShowPayLink]=useState(false);
+  const [showLink,setShowLink]=useState(false);
+  const [selectedPrimary,setSelectedPrimary]=useState(m?.primary_member_id||'');
+  const isPrimary=!m?.primary_member_id;
+  const primaryMember=m?.primary_member_id?members.find(x=>x.id===m.primary_member_id):null;
+  const dependents=members.filter(x=>x.primary_member_id===id);
+
+  async function savePrimaryLink(){
+    setSv(true);
+    await supabase.from('members').update({
+      primary_member_id: selectedPrimary||null,
+      // If linking to a primary, sync their status
+      ...(selectedPrimary ? {
+        status: members.find(x=>x.id===selectedPrimary)?.status || m.status
+      } : {})
+    }).eq('id',id);
+    setMembers(ms=>ms.map(x=>x.id===id?{...x,primary_member_id:selectedPrimary||null}:x));
+    setSv(false);setShowLink(false);
+  }
   const [payAmount,setPayAmount]=useState('');
   const [generatedLink,setGeneratedLink]=useState(null);
   const [genLoading,setGenLoading]=useState(false);
@@ -131,7 +151,17 @@ function DetailModal({id,members,setMembers,onClose}){
   const od=m.status==='overdue'&&m.last_payment?dOD(m.last_payment):0;
   async function saveBelt(){setSv(true);await supabase.from('members').update({belt,stripes}).eq('id',id);setMembers(ms=>ms.map(x=>x.id===id?{...x,belt,stripes}:x));setSv(false);}
   async function logSess(){setSv(true);const n=(m.sessions||0)+1;await supabase.from('members').update({sessions:n}).eq('id',id);await supabase.from('sessions').insert({member_id:id,session_date:todayStr()});setMembers(ms=>ms.map(x=>x.id===id?{...x,sessions:n}:x));setSv(false);}
-  async function setStat(s){setSv(true);const u={status:s};if(s==='active')u.last_payment=todayStr();await supabase.from('members').update(u).eq('id',id);setMembers(ms=>ms.map(x=>x.id===id?{...x,...u}:x));setSv(false);onClose();}
+  async function setStat(s){
+    setSv(true);
+    const u={status:s};
+    if(s==='active')u.last_payment=todayStr();
+    // Update this member
+    await supabase.from('members').update(u).eq('id',id);
+    // Cascade to dependents
+    await supabase.from('members').update(u).eq('primary_member_id',id);
+    setMembers(ms=>ms.map(x=>x.id===id||x.primary_member_id===id?{...x,...u}:x));
+    setSv(false);onClose();
+  }
   async function deleteMember(){
     if(!window.confirm(`Permanently delete ${m.name}? This cannot be undone.`))return;
     setSv(true);
@@ -163,6 +193,35 @@ function DetailModal({id,members,setMembers,onClose}){
       {[{l:'Sessions',v:m.sessions||0},{l:'Status',v:m.status},{l:'Since',v:m.joined_at?new Date(m.joined_at).getFullYear():'—'}].map(x=><div key={x.l} style={{background:'#111',border:`1px solid ${BL}`,borderRadius:4,padding:'10px',textAlign:'center'}}><div style={{color:'#2a2200',fontSize:9,textTransform:'uppercase',letterSpacing:1.5,fontWeight:800,fontFamily:F}}>{x.l}</div><div style={{color:'#fff',fontSize:18,fontWeight:800,fontFamily:F,marginTop:3}}>{x.v}</div></div>)}
     </div>
     {m.status==='overdue'&&<div style={{background:'#1a0800',border:'1px solid #7a3300',borderRadius:4,padding:'10px 14px',marginBottom:12,color:ORG,fontSize:13,fontFamily:FB}}>Payment {od} day{od!==1?'s':''} overdue</div>}
+    {/* Primary/Dependent linking */}
+    <div style={{background:'#111',border:`1px solid ${BL}`,borderRadius:4,padding:'14px 16px',marginBottom:12}}>
+      <SLabel ch="Family / Payment Link"/>
+      {primaryMember&&<div style={{color:'#888',fontSize:13,fontFamily:FB,marginBottom:8}}>
+        Paying via <span style={{color:G,fontWeight:700}}>{primaryMember.name}</span>
+        <button onClick={()=>{setSelectedPrimary('');setShowLink(true);}} style={{marginLeft:10,background:'none',border:'none',color:'#555',fontSize:11,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>Change</button>
+      </div>}
+      {dependents.length>0&&<div style={{marginBottom:8}}>
+        <div style={{color:'#2e2800',fontSize:9,fontWeight:800,fontFamily:F,letterSpacing:1.5,textTransform:'uppercase',marginBottom:6}}>Dependents on this account</div>
+        {dependents.map(d=><div key={d.id} style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+          <div style={{width:5,height:5,borderRadius:'50%',background:G,flexShrink:0}}/>
+          <span style={{color:'#fff',fontSize:13,fontFamily:F}}>{d.name}</span>
+          <span style={{color:'#444',fontSize:11,fontFamily:F,marginLeft:'auto'}}>{d.status}</span>
+        </div>)}
+      </div>}
+      {!showLink&&!primaryMember&&dependents.length===0&&<button onClick={()=>{setSelectedPrimary('');setShowLink(true);}} style={{width:'100%',padding:'9px',background:'transparent',border:`1px solid ${BL}`,borderRadius:3,color:'#555',fontSize:11,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>Link to Primary Member</button>}
+      {showLink&&<div>
+        <div style={{color:GD,fontSize:10,letterSpacing:1.5,textTransform:'uppercase',marginBottom:6,fontWeight:800,fontFamily:F}}>Select Primary Member</div>
+        <select value={selectedPrimary} onChange={e=>setSelectedPrimary(e.target.value)} style={{width:'100%',background:'#0a0a0a',border:`1px solid ${BL}`,borderRadius:3,padding:'10px 12px',color:'#fff',fontSize:14,outline:'none',fontFamily:FB,WebkitAppearance:'none',colorScheme:'dark',boxSizing:'border-box',marginBottom:8}}>
+          <option value=''>— No primary (standalone) —</option>
+          {members.filter(x=>x.id!==id&&!x.primary_member_id).map(x=><option key={x.id} value={x.id}>{x.name}</option>)}
+        </select>
+        <div style={{display:'flex',gap:8}}>
+          <button onClick={()=>setShowLink(false)} style={{flex:1,padding:'9px',background:'transparent',border:`1px solid ${BL}`,borderRadius:3,color:'#555',fontSize:11,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>Cancel</button>
+          <button onClick={savePrimaryLink} disabled={sv} style={{flex:2,padding:'9px',background:G,border:'none',borderRadius:3,color:'#000',fontSize:12,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',opacity:sv?.6:1}}>{sv?'Saving...':'Save Link'}</button>
+        </div>
+      </div>}
+    </div>
+
     <div style={{background:'#111',border:`1px solid ${BL}`,borderRadius:4,padding:'14px 16px',marginBottom:12}}>
       <SLabel ch="Payment"/>
       <div style={{display:'flex',justifyContent:'space-between'}}>
@@ -174,8 +233,8 @@ function DetailModal({id,members,setMembers,onClose}){
     <div style={{background:'#111',border:`1px solid ${BL}`,borderRadius:4,padding:'14px 16px',marginBottom:12}}>
       <SLabel ch="Update Belt"/>
       <div style={{display:'flex',gap:8,alignItems:'center'}}>
-        <div style={{flex:1}}><FS value={belt} onChange={e=>setBelt(e.target.value)} options={BELTS}/></div>
-        <div style={{width:78}}><FS value={stripes} onChange={e=>setStr(+e.target.value)} options={[0,1,2,3,4].map(n=>({v:n,l:n}))}/></div>
+        <div style={{flex:1}}><FS value={belt} onChange={e=>{setBelt(e.target.value);if(isKidsBelt(e.target.value))setStr(0);}} options={BELTS}/></div>
+        {!isKidsBelt(belt)&&<div style={{width:78}}><FS value={stripes} onChange={e=>setStr(+e.target.value)} options={[0,1,2,3,4].map(n=>({v:n,l:n}))}/></div>}
         <GBtn ch="Save" onClick={saveBelt} small disabled={sv}/>
       </div>
     </div>
