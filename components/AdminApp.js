@@ -102,12 +102,16 @@ function Logo(){
   </div>;
 }
 
-function StatBar({stats}){
+function StatBar({stats,onSessionsClick}){
   return <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',borderBottom:`1px solid ${BL}`,background:SURF}}>
-    {stats.map((s,i)=><div key={s.l} style={{padding:'14px 12px',borderRight:i<3?`1px solid ${BL}`:'none',textAlign:'center'}}>
-      <div style={{color:s.c,fontSize:28,fontWeight:900,fontFamily:FN,lineHeight:1,letterSpacing:-1}}>{s.v}</div>
-      <div style={{color:'#444',fontSize:10,textTransform:'uppercase',letterSpacing:1.5,fontWeight:700,fontFamily:F,marginTop:4}}>{s.l}</div>
-    </div>)}
+    {stats.map((s,i)=>{
+      const isSession=s.l==='Sessions';
+      return <div key={s.l} onClick={isSession?onSessionsClick:undefined} style={{padding:'14px 12px',borderRight:i<3?`1px solid ${BL}`:'none',textAlign:'center',cursor:isSession?'pointer':'default',background:isSession?'transparent':undefined}}>
+        <div style={{color:s.c,fontSize:28,fontWeight:900,fontFamily:FN,lineHeight:1,letterSpacing:-1}}>{s.v}</div>
+        <div style={{color:'#444',fontSize:10,textTransform:'uppercase',letterSpacing:1.5,fontWeight:700,fontFamily:F,marginTop:4}}>{s.l}</div>
+        {isSession&&<div style={{color:GD,fontSize:9,fontFamily:F,letterSpacing:1,textTransform:'uppercase',marginTop:2}}>View All</div>}
+      </div>;
+    })}
   </div>;
 }
 
@@ -351,13 +355,19 @@ function DetailModal({id,members,setMembers,onClose}){
       {m.emergency_contact&&<div style={{color:'#888',fontSize:14,fontFamily:FB}}>🚨 {m.emergency_contact}</div>}
     </div>}
     <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:14}}>
-      {[{l:'Sessions',v:m.sessions||0,c:'#fff',click:loadSessionLog},{l:'Status',v:m.status,c:statusColor[m.status]||'#444',click:null},{l:'Since',v:m.joined_at?new Date(m.joined_at).getFullYear():'—',c:'#fff',click:null}].map(x=><div key={x.l} onClick={x.click||undefined} style={{background:SURF,borderRadius:8,padding:'12px',textAlign:'center',cursor:x.click?'pointer':'default',border:`1px solid ${x.click?BL:'transparent'}`,transition:'border-color .15s'}}
-        onMouseEnter={x.click?e=>e.currentTarget.style.borderColor=G:undefined}
-        onMouseLeave={x.click?e=>e.currentTarget.style.borderColor=BL:undefined}>
-        <div style={{color:'#444',fontSize:10,textTransform:'uppercase',letterSpacing:1.5,fontWeight:700,fontFamily:F}}>{x.l}</div>
-        <div style={{color:x.c,fontSize:20,fontWeight:900,fontFamily:FN,marginTop:4}}>{x.v}</div>
-        {x.click&&<div style={{color:GD,fontSize:9,fontFamily:F,letterSpacing:1,textTransform:'uppercase',marginTop:3}}>View Log</div>}
-      </div>)}
+      <div onClick={loadSessionLog} style={{background:SURF,border:`1px solid ${G}40`,borderRadius:8,padding:'12px',textAlign:'center',cursor:'pointer'}}>
+        <div style={{color:'#444',fontSize:10,textTransform:'uppercase',letterSpacing:1.5,fontWeight:700,fontFamily:F}}>Sessions</div>
+        <div style={{color:'#fff',fontSize:20,fontWeight:900,fontFamily:FN,marginTop:4}}>{m.sessions||0}</div>
+        <div style={{color:GD,fontSize:9,fontFamily:F,letterSpacing:1,textTransform:'uppercase',marginTop:3}}>View Log</div>
+      </div>
+      <div style={{background:SURF,borderRadius:8,padding:'12px',textAlign:'center'}}>
+        <div style={{color:'#444',fontSize:10,textTransform:'uppercase',letterSpacing:1.5,fontWeight:700,fontFamily:F}}>Status</div>
+        <div style={{color:statusColor[m.status]||'#444',fontSize:20,fontWeight:900,fontFamily:FN,marginTop:4}}>{m.status}</div>
+      </div>
+      <div style={{background:SURF,borderRadius:8,padding:'12px',textAlign:'center'}}>
+        <div style={{color:'#444',fontSize:10,textTransform:'uppercase',letterSpacing:1.5,fontWeight:700,fontFamily:F}}>Since</div>
+        <div style={{color:'#fff',fontSize:20,fontWeight:900,fontFamily:FN,marginTop:4}}>{m.joined_at?new Date(m.joined_at).getFullYear():'—'}</div>
+      </div>
     </div>
     {m.status==='overdue'&&<div style={{background:'#1a0800',border:'1px solid #7a3300',borderRadius:8,padding:'12px 14px',marginBottom:12,color:ORG,fontSize:14,fontFamily:FB}}>Payment {od} day{od!==1?'s':''} overdue</div>}
 
@@ -759,6 +769,29 @@ export default function AdminApp({initialMembers,initialSchedule,initialProducts
   const [products,setProducts]=useState(initialProducts||[]);
   const [view,setView]=useState('roster');
   const [detailId,setDetailId]=useState(null);
+  const [showAllSessions,setShowAllSessions]=useState(false);
+  const [allSessions,setAllSessions]=useState([]);
+  const [allSessionsLoading,setAllSessionsLoading]=useState(false);
+  const [confirmDelGlobalSession,setConfirmDelGlobalSession]=useState(null);
+
+  async function loadAllSessions(){
+    setAllSessionsLoading(true);
+    setShowAllSessions(true);
+    const{data}=await supabase.from('sessions').select('*, members(name)').order('session_date',{ascending:false}).limit(200);
+    setAllSessions(data||[]);
+    setAllSessionsLoading(false);
+  }
+  async function deleteGlobalSession(sessionId,memberId){
+    await supabase.from('sessions').delete().eq('id',sessionId);
+    const m=members.find(x=>x.id===memberId);
+    if(m){
+      const newCount=Math.max(0,(m.sessions||0)-1);
+      await supabase.from('members').update({sessions:newCount}).eq('id',memberId);
+      setMembers(ms=>ms.map(x=>x.id===memberId?{...x,sessions:newCount}:x));
+    }
+    setAllSessions(s=>s.filter(x=>x.id!==sessionId));
+    setConfirmDelGlobalSession(null);
+  }
 
   const stats=[
     {l:'Pending',v:members.filter(m=>m.status==='pending').length,c:BLUE},
@@ -781,7 +814,7 @@ export default function AdminApp({initialMembers,initialSchedule,initialProducts
       <Logo/>
       <div style={{fontSize:10,color:'#555',fontFamily:F,letterSpacing:2,textTransform:'uppercase',fontWeight:800,background:GK,border:`1px solid ${BL}`,padding:'5px 12px',borderRadius:20}}>Admin</div>
     </div>
-    <StatBar stats={stats}/>
+    <StatBar stats={stats} onSessionsClick={loadAllSessions}/>
     <div style={{padding:'20px',paddingBottom:100}}>
       {view==='roster'&&<RosterView members={members} setMembers={setMembers} openDetail={setDetailId}/>}
       {view==='payments'&&<PaymentsView members={members} setMembers={setMembers}/>}
@@ -801,5 +834,35 @@ export default function AdminApp({initialMembers,initialSchedule,initialProducts
     </div>
     <div style={{height:80}}/>
     {detailId&&<DetailModal id={detailId} members={members} setMembers={setMembers} onClose={()=>setDetailId(null)}/>}
+
+    {/* Global sessions modal */}
+    {showAllSessions&&<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.88)',zIndex:200,display:'flex',alignItems:'flex-end',justifyContent:'center'}}>
+      <div style={{background:'#0e0e0c',border:`1px solid ${BL}`,borderRadius:'16px 16px 0 0',width:'100%',maxWidth:520,maxHeight:'88vh',display:'flex',flexDirection:'column'}}>
+        <div style={{width:40,height:4,background:'#333',borderRadius:2,margin:'12px auto 0',flexShrink:0}}/>
+        <div style={{padding:'16px 24px 8px',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
+          <div style={{fontWeight:800,fontSize:18,letterSpacing:1,color:'#fff',textTransform:'uppercase',fontFamily:F}}>All Sessions</div>
+          <button onClick={()=>setShowAllSessions(false)} style={{background:'none',border:'none',color:'#555',fontSize:20,cursor:'pointer'}}>×</button>
+        </div>
+        <div style={{overflowY:'auto',flex:1,padding:'0 24px 24px'}}>
+          {allSessionsLoading&&<div style={{color:'#555',fontSize:14,fontFamily:FB,padding:'20px 0'}}>Loading...</div>}
+          {!allSessionsLoading&&allSessions.length===0&&<div style={{color:'#555',fontSize:14,fontFamily:FB,padding:'20px 0'}}>No sessions logged yet.</div>}
+          {allSessions.map(s=><div key={s.id} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 0',borderBottom:`1px solid ${BL}`}}>
+            <div style={{width:6,height:6,borderRadius:'50%',background:G,flexShrink:0}}/>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{color:'#fff',fontSize:14,fontFamily:FB,fontWeight:600}}>{s.members?.name||'Unknown'}</div>
+              <div style={{color:'#555',fontSize:12,fontFamily:FB,marginTop:1}}>{new Date(s.session_date).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'})}{s.note&&` — ${s.note}`}</div>
+            </div>
+            {confirmDelGlobalSession===s.id
+              ?<div style={{display:'flex',gap:6,alignItems:'center',flexShrink:0}}>
+                <span style={{color:'#888',fontSize:11,fontFamily:FB}}>Sure?</span>
+                <button onClick={()=>deleteGlobalSession(s.id,s.member_id)} style={{padding:'3px 10px',background:'#3a0a0a',border:'1px solid #7a2020',borderRadius:4,color:RED,fontSize:11,fontFamily:F,letterSpacing:1,cursor:'pointer'}}>Yes</button>
+                <button onClick={()=>setConfirmDelGlobalSession(null)} style={{padding:'3px 10px',background:'transparent',border:`1px solid ${BL}`,borderRadius:4,color:'#555',fontSize:11,fontFamily:F,cursor:'pointer'}}>No</button>
+              </div>
+              :<button onClick={()=>setConfirmDelGlobalSession(s.id)} style={{padding:'3px 10px',background:'transparent',border:'1px solid #3a1000',borderRadius:4,color:'#6a2a00',fontSize:10,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',flexShrink:0}}>Delete</button>
+            }
+          </div>)}
+        </div>
+      </div>
+    </div>}
   </div>;
 }

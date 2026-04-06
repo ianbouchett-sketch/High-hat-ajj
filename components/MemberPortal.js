@@ -112,6 +112,16 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
   const [editForm,setEditForm]=useState({phone:'',home_phone:'',parent_name:'',address_line1:'',address_line2:'',city:'',state:'',zip:'',emergency_contact:'',avatar_color:''});
   const [expandedId,setExpandedId]=useState(null);
   const [saving,setSaving]=useState(false);
+  const [confirmDelSession,setConfirmDelSession]=useState(null);
+
+  async function deleteSession(sessionId){
+    const res=await fetch('/api/log-session',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,memberId:member.id})});
+    if(res.ok){
+      setSessions(s=>s.filter(x=>x.id!==sessionId));
+      showT('Session removed.');
+    }
+    setConfirmDelSession(null);
+  }
   const [showPendingModal,setShowPendingModal]=useState(false);
 
   // Show pending payment popup on first load if status is pending
@@ -426,13 +436,21 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
           <GBtn onClick={()=>setShowLog(true)} style={{fontSize:12,padding:'9px 16px'}}>+ Log</GBtn>
         </div>
         <Card><div style={{padding:'8px 18px'}}>
-          {[...sessions].sort((a,b)=>new Date(b.session_date)-new Date(a.session_date)).map(s=><div key={s.id} onClick={()=>s.note&&setExpandedId(expandedId===s.id?null:s.id)} style={{padding:'14px 0',borderBottom:`1px solid ${BL}`,cursor:s.note?'pointer':'default'}}>
-            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-              <div style={{display:'flex',alignItems:'center',gap:12}}>
+          {[...sessions].sort((a,b)=>new Date(b.session_date)-new Date(a.session_date)).map(s=><div key={s.id} style={{padding:'14px 0',borderBottom:`1px solid ${BL}`}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+              <div onClick={()=>s.note&&setExpandedId(expandedId===s.id?null:s.id)} style={{display:'flex',alignItems:'center',gap:12,flex:1,cursor:s.note?'pointer':'default',minWidth:0}}>
                 <div style={{width:8,height:8,borderRadius:'50%',background:G,flexShrink:0,boxShadow:`0 0 6px ${G}60`}}/>
-                <span style={{color:'#fff',fontSize:15,fontWeight:700,fontFamily:FB}}>{fmtL(s.session_date)}</span>
+                <span style={{color:'#fff',fontSize:15,fontWeight:700,fontFamily:FB,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{fmtL(s.session_date)}</span>
+                {s.note&&<span style={{color:'#444',fontSize:18,flexShrink:0}}>›</span>}
               </div>
-              {s.note&&<span style={{color:'#444',fontSize:18}}>›</span>}
+              {confirmDelSession===s.id
+                ?<div style={{display:'flex',gap:6,alignItems:'center',flexShrink:0}}>
+                  <span style={{color:'#888',fontSize:12,fontFamily:FB}}>Remove?</span>
+                  <button onClick={()=>deleteSession(s.id)} style={{padding:'3px 10px',background:'#3a0a0a',border:'1px solid #7a2020',borderRadius:4,color:RED,fontSize:11,fontFamily:F,letterSpacing:1,cursor:'pointer'}}>Yes</button>
+                  <button onClick={()=>setConfirmDelSession(null)} style={{padding:'3px 10px',background:'transparent',border:`1px solid ${BL}`,borderRadius:4,color:'#555',fontSize:11,fontFamily:F,cursor:'pointer'}}>No</button>
+                </div>
+                :<button onClick={()=>setConfirmDelSession(s.id)} style={{padding:'3px 10px',background:'transparent',border:`1px solid ${BL}`,borderRadius:4,color:'#555',fontSize:10,fontFamily:F,letterSpacing:1,cursor:'pointer',flexShrink:0}}>×</button>
+              }
             </div>
             {s.note&&expandedId!==s.id&&<div style={{color:'#444',fontSize:13,marginTop:6,paddingLeft:20,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',fontFamily:FB}}>{s.note}</div>}
             {s.note&&expandedId===s.id&&<div style={{color:'#888',fontSize:14,marginTop:10,paddingLeft:20,lineHeight:1.7,borderLeft:`2px solid ${BL}`,fontFamily:FB}}>{s.note}</div>}

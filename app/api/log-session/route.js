@@ -11,7 +11,7 @@ export async function POST(request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY
   );
 
-  // Insert session
+  // Insert the session row
   const { data, error } = await supabase
     .from('sessions')
     .insert({ member_id: memberId, session_date: sessionDate, note: note || null })
@@ -19,14 +19,32 @@ export async function POST(request) {
     .single();
 
   if (error) {
-    // Handle duplicate date gracefully
     if (error.code === '23505') {
       return Response.json({ error: 'Already logged for that date.' }, { status: 409 });
     }
     return Response.json({ error: error.message }, { status: 500 });
   }
 
-  // Increment session count on the member row
+  // Atomically increment the session count using the database function
+  await supabase.rpc('increment_session_count', { member_uuid: memberId });
+
+  return Response.json({ session: data });
+}
+
+export async function DELETE(request) {
+  const { sessionId, memberId } = await request.json();
+  if (!sessionId || !memberId) {
+    return Response.json({ error: 'Missing fields' }, { status: 400 });
+  }
+
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+
+  await supabase.from('sessions').delete().eq('id', sessionId);
+
+  // Decrement session count
   const { data: member } = await supabase
     .from('members')
     .select('sessions')
@@ -35,8 +53,8 @@ export async function POST(request) {
 
   await supabase
     .from('members')
-    .update({ sessions: (member?.sessions || 0) + 1 })
+    .update({ sessions: Math.max(0, (member?.sessions || 1) - 1) })
     .eq('id', memberId);
 
-  return Response.json({ session: data });
+  return Response.json({ success: true });
 }
