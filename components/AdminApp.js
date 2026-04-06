@@ -185,6 +185,27 @@ function DetailModal({id,members,setMembers,onClose}){
   const [genLoading,setGenLoading]=useState(false);
   const [showLink,setShowLink]=useState(false);
   const [showLogSession,setShowLogSession]=useState(false);
+  const [showSessionLog,setShowSessionLog]=useState(false);
+  const [sessionLog,setSessionLog]=useState([]);
+  const [sessionLogLoading,setSessionLogLoading]=useState(false);
+  const [confirmDelSession,setConfirmDelSession]=useState(null);
+
+  async function loadSessionLog(){
+    setSessionLogLoading(true);
+    const{data}=await supabase.from('sessions').select('*').eq('member_id',id).order('session_date',{ascending:false});
+    setSessionLog(data||[]);
+    setSessionLogLoading(false);
+    setShowSessionLog(true);
+  }
+  async function deleteSession(sessionId){
+    await supabase.from('sessions').delete().eq('id',sessionId);
+    // Decrement count
+    const newCount=Math.max(0,(m.sessions||0)-1);
+    await supabase.from('members').update({sessions:newCount}).eq('id',id);
+    setMembers(ms=>ms.map(x=>x.id===id?{...x,sessions:newCount}:x));
+    setSessionLog(sl=>sl.filter(s=>s.id!==sessionId));
+    setConfirmDelSession(null);
+  }
   const [logSessionDate,setLogSessionDate]=useState('');
   const [showEditInfo,setShowEditInfo]=useState(false);
   const [editName,setEditName]=useState(m?.name||'');
@@ -330,9 +351,12 @@ function DetailModal({id,members,setMembers,onClose}){
       {m.emergency_contact&&<div style={{color:'#888',fontSize:14,fontFamily:FB}}>🚨 {m.emergency_contact}</div>}
     </div>}
     <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:14}}>
-      {[{l:'Sessions',v:m.sessions||0,c:'#fff'},{l:'Status',v:m.status,c:statusColor[m.status]||'#444'},{l:'Since',v:m.joined_at?new Date(m.joined_at).getFullYear():'—',c:'#fff'}].map(x=><div key={x.l} style={{background:SURF,borderRadius:8,padding:'12px',textAlign:'center'}}>
+      {[{l:'Sessions',v:m.sessions||0,c:'#fff',click:loadSessionLog},{l:'Status',v:m.status,c:statusColor[m.status]||'#444',click:null},{l:'Since',v:m.joined_at?new Date(m.joined_at).getFullYear():'—',c:'#fff',click:null}].map(x=><div key={x.l} onClick={x.click||undefined} style={{background:SURF,borderRadius:8,padding:'12px',textAlign:'center',cursor:x.click?'pointer':'default',border:`1px solid ${x.click?BL:'transparent'}`,transition:'border-color .15s'}}
+        onMouseEnter={x.click?e=>e.currentTarget.style.borderColor=G:undefined}
+        onMouseLeave={x.click?e=>e.currentTarget.style.borderColor=BL:undefined}>
         <div style={{color:'#444',fontSize:10,textTransform:'uppercase',letterSpacing:1.5,fontWeight:700,fontFamily:F}}>{x.l}</div>
         <div style={{color:x.c,fontSize:20,fontWeight:900,fontFamily:FN,marginTop:4}}>{x.v}</div>
+        {x.click&&<div style={{color:GD,fontSize:9,fontFamily:F,letterSpacing:1,textTransform:'uppercase',marginTop:3}}>View Log</div>}
       </div>)}
     </div>
     {m.status==='overdue'&&<div style={{background:'#1a0800',border:'1px solid #7a3300',borderRadius:8,padding:'12px 14px',marginBottom:12,color:ORG,fontSize:14,fontFamily:FB}}>Payment {od} day{od!==1?'s':''} overdue</div>}
@@ -407,6 +431,33 @@ function DetailModal({id,members,setMembers,onClose}){
     {conf&&<div style={{background:'#1a0808',border:'1px solid #6a2020',borderRadius:8,padding:'14px',marginBottom:8}}>
       <div style={{color:RED,fontSize:14,fontFamily:FB,marginBottom:12}}>This cancels the Stripe subscription immediately. Cannot be undone.</div>
       <div style={{display:'flex',gap:8}}><GhBtn ch="Keep It" onClick={()=>setConf(false)} style={{flex:1}}/><DBtn ch={cancelling?'Cancelling...':'Yes, Cancel'} onClick={cancelSub} style={{flex:1}} disabled={cancelling}/></div>
+    </div>}
+
+    {/* Session log modal */}
+    {showSessionLog&&<div style={{background:SURF,border:`1px solid ${BL}`,borderRadius:10,padding:'16px',marginBottom:10}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
+        <div style={{color:G,fontSize:13,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase'}}>Session Log — {m.name}</div>
+        <button onClick={()=>setShowSessionLog(false)} style={{background:'none',border:'none',color:'#555',fontSize:18,cursor:'pointer',padding:'0 4px'}}>×</button>
+      </div>
+      {sessionLogLoading&&<div style={{color:'#555',fontSize:13,fontFamily:FB,padding:'10px 0'}}>Loading...</div>}
+      {!sessionLogLoading&&sessionLog.length===0&&<div style={{color:'#555',fontSize:13,fontFamily:FB}}>No sessions logged yet.</div>}
+      <div style={{maxHeight:280,overflowY:'auto'}}>
+        {sessionLog.map(s=><div key={s.id} style={{display:'flex',alignItems:'center',gap:10,padding:'9px 0',borderBottom:`1px solid ${BL}`}}>
+          <div style={{width:6,height:6,borderRadius:'50%',background:G,flexShrink:0}}/>
+          <div style={{flex:1}}>
+            <div style={{color:'#fff',fontSize:14,fontFamily:FB,fontWeight:600}}>{new Date(s.session_date).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'})}</div>
+            {s.note&&<div style={{color:'#555',fontSize:12,fontFamily:FB,marginTop:2}}>{s.note}</div>}
+          </div>
+          {confirmDelSession===s.id
+            ?<div style={{display:'flex',gap:6,alignItems:'center'}}>
+              <span style={{color:'#888',fontSize:11,fontFamily:FB}}>Sure?</span>
+              <button onClick={()=>deleteSession(s.id)} style={{padding:'3px 10px',background:'#3a0a0a',border:'1px solid #7a2020',borderRadius:4,color:RED,fontSize:11,fontFamily:F,letterSpacing:1,cursor:'pointer'}}>Yes</button>
+              <button onClick={()=>setConfirmDelSession(null)} style={{padding:'3px 10px',background:'transparent',border:`1px solid ${BL}`,borderRadius:4,color:'#555',fontSize:11,fontFamily:F,cursor:'pointer'}}>No</button>
+            </div>
+            :<button onClick={()=>setConfirmDelSession(s.id)} style={{padding:'3px 10px',background:'transparent',border:'1px solid #3a1000',borderRadius:4,color:'#6a2a00',fontSize:10,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',flexShrink:0}}>Delete</button>
+          }
+        </div>)}
+      </div>
     </div>}
 
     {showLogSession&&<div style={{background:'#0a1a0a',border:'1px solid #2a6a2a',borderRadius:10,padding:'16px',marginBottom:10}}>
