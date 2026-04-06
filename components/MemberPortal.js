@@ -26,10 +26,10 @@ function computeStreak(sessions){
   return st;
 }
 
-function Card({children,style={}}){return <div style={{background:CARD,border:`1px solid ${BL}`,borderRadius:5,marginBottom:10,overflow:'hidden',...style}}>{children}</div>}
-function SLabel({children}){return <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}><div style={{width:12,height:1,background:G,opacity:.5}}/><span style={{color:GD,fontSize:9,fontWeight:800,letterSpacing:2,textTransform:'uppercase',fontFamily:F}}>{children}</span><div style={{flex:1,height:1,background:BL}}/></div>}
-function GBtn({children,onClick,style={}}){return <button onClick={onClick} style={{padding:'9px 18px',background:G,border:'none',borderRadius:3,color:'#000',fontWeight:800,fontSize:12,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',...style}}>{children}</button>}
-function GhBtn({children,onClick,style={}}){return <button onClick={onClick} style={{padding:'7px 14px',background:'transparent',border:`1px solid ${BL}`,borderRadius:3,color:'#555',fontSize:11,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',...style}}>{children}</button>}
+function Card({children,style={}}){return <div style={{background:CARD,border:`1px solid ${BL}`,borderRadius:5,marginBottom:14,overflow:'hidden',...style}}>{children}</div>}
+function SLabel({children}){return <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}><div style={{width:12,height:1,background:G,opacity:.5}}/><span style={{color:GD,fontSize:11,fontWeight:800,letterSpacing:2,textTransform:'uppercase',fontFamily:F}}>{children}</span><div style={{flex:1,height:1,background:BL}}/></div>}
+function GBtn({children,onClick,style={}}){return <button onClick={onClick} style={{padding:'12px 22px',background:G,border:'none',borderRadius:4,color:'#000',fontWeight:800,fontSize:14,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',...style}}>{children}</button>}
+function GhBtn({children,onClick,style={}}){return <button onClick={onClick} style={{padding:'9px 16px',background:'transparent',border:`1px solid ${BL}`,borderRadius:3,color:'#555',fontSize:12,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',...style}}>{children}</button>}
 function TPill({type}){const c=TYPE_CFG[type]||TYPE_CFG.Other;return <span style={{padding:'2px 7px',background:c.bg,border:`1px solid ${c.br}`,borderRadius:2,fontSize:9,fontWeight:800,fontFamily:F,color:'#fff',letterSpacing:1,textTransform:'uppercase'}}>{type}</span>}
 const KIDS_BELTS=['White','Grey','Yellow','Orange','Green'];
 const isKidsBelt=b=>KIDS_BELTS.includes(b);
@@ -38,14 +38,14 @@ function BeltBar({belt,stripes}){
   const kids=isKidsBelt(belt);
   return <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:8}}>
     <div style={{width:kids?140:180,height:28,background:c.bg,border:`2px solid ${c.br}`,borderRadius:3,display:'flex',alignItems:'center',justifyContent:kids?'center':'space-between',padding:'0 10px',boxShadow:`0 0 24px ${c.gl}`}}>
-      <span style={{fontSize:11,fontWeight:800,fontFamily:F,color:c.tx,letterSpacing:2,textTransform:'uppercase'}}>{belt} Belt</span>
+      <span style={{fontSize:13,fontWeight:800,fontFamily:F,color:c.tx,letterSpacing:2,textTransform:'uppercase'}}>{belt} Belt</span>
       {!kids&&<div style={{display:'flex',gap:3}}>{[0,1,2,3,4].map(i=><div key={i} style={{width:8,height:20,borderRadius:2,background:i<stripes?sc:'transparent',border:`1px solid ${i<stripes?sc:(belt==='White'?'#aaa':c.br)}`,opacity:i<stripes?1:0.25}}/>)}</div>}
     </div>
     {!kids&&<div style={{color:'#3a3200',fontSize:10,fontFamily:F,fontWeight:700,letterSpacing:1}}>{stripes} of 4 stripes</div>}
   </div>;
 }
 function Modal({open,onClose,title,children}){if(!open)return null;return <div onClick={e=>e.target===e.currentTarget&&onClose()} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.92)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}><div style={{background:'#0a0a0a',border:`1px solid ${BL}`,borderRadius:6,width:'100%',maxWidth:420,maxHeight:'90vh',overflowY:'auto'}}><div style={{height:3,background:G,opacity:.85}}/><div style={{padding:24}}><div style={{fontWeight:800,fontSize:18,letterSpacing:2,color:'#fff',textTransform:'uppercase',marginBottom:20,fontFamily:F}}>{title}</div>{children}</div></div></div>}
-function FL({children}){return <div style={{color:GD,fontSize:10,letterSpacing:1.5,textTransform:'uppercase',marginBottom:6,fontWeight:800,fontFamily:F}}>{children}</div>}
+function FL({children}){return <div style={{color:GD,fontSize:12,letterSpacing:1.5,textTransform:'uppercase',marginBottom:8,fontWeight:800,fontFamily:F}}>{children}</div>}
 
 function Logo(){
   return <div style={{display:'flex',alignItems:'center',gap:10}}>
@@ -189,23 +189,23 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
   const navs=[{id:'home',l:'Home'},{id:'journal',l:'Journal'},{id:'schedule',l:'Schedule'},{id:'profile',l:'Profile'}];
 
   return <div style={{minHeight:'100vh',background:BG,color:'#fff',fontFamily:FB,paddingBottom:20}}>
-    {toast&&<div style={{position:'fixed',top:16,left:'50%',transform:'translateX(-50%)',background:'#1a1600',border:`1px solid ${GD}`,borderRadius:4,padding:'11px 18px',color:G,fontSize:13,fontWeight:800,fontFamily:F,letterSpacing:1,zIndex:300,whiteSpace:'nowrap'}}>{toast}</div>}
+    {toast&&<div style={{position:'fixed',top:16,left:'50%',transform:'translateX(-50%)',background:'#1a1600',border:`1px solid ${GD}`,borderRadius:4,padding:'11px 18px',color:G,fontSize:15,fontWeight:800,fontFamily:F,letterSpacing:1,zIndex:300,whiteSpace:'nowrap'}}>{toast}</div>}
     <div style={{height:3,background:G}}/>
     <div style={{background:BG,borderBottom:`1px solid ${BL}`,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 16px',height:58,position:'sticky',top:0,zIndex:40,flexWrap:'wrap',gap:8}}>
       <Logo/>
-      <div style={{display:'flex',gap:3,flexWrap:'wrap'}}>{navs.map(n=><button key={n.id} onClick={()=>setView(n.id)} style={{padding:'6px 10px',background:view===n.id?G:'transparent',border:view===n.id?'none':`1px solid ${BL}`,borderRadius:3,color:view===n.id?'#000':'#555',fontSize:10,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>{n.l}</button>)}</div>
-      <GBtn onClick={()=>setShowLog(true)} style={{fontSize:11,padding:'7px 12px'}}>+ Session</GBtn>
+      <div style={{display:'flex',gap:3,flexWrap:'wrap'}}>{navs.map(n=><button key={n.id} onClick={()=>setView(n.id)} style={{padding:'8px 14px',background:view===n.id?G:'transparent',border:view===n.id?'none':`1px solid ${BL}`,borderRadius:3,color:view===n.id?'#000':'#555',fontSize:10,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>{n.l}</button>)}</div>
+      <GBtn onClick={()=>setShowLog(true)} style={{fontSize:13,padding:'10px 18px'}}>+ Session</GBtn>
     </div>
 
-    <div style={{padding:'16px'}}>
+    <div style={{padding:'20px'}}>
       {view==='home'&&<div>
-        {isOD&&<div style={{background:'#120700',border:'1px solid #7a3300',borderRadius:4,padding:'14px 16px',marginBottom:10,color:ORG,fontSize:14,fontFamily:F,fontWeight:700}}>Payment Overdue — Contact the gym.</div>}
+        {isOD&&<div style={{background:'#120700',border:'1px solid #7a3300',borderRadius:4,padding:'18px 20px',marginBottom:10,color:ORG,fontSize:14,fontFamily:F,fontWeight:700}}>Payment Overdue — Contact the gym.</div>}
         <Card style={{background:`radial-gradient(ellipse at 90% 0%,${BELT_CFG[member.belt]?.gl||'transparent'} 0%,${CARD} 55%)`}}>
           <div style={{height:3,background:G,opacity:.7}}/>
-          <div style={{padding:'20px 18px'}}>
+          <div style={{padding:'24px 20px'}}>
             <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:20}}>
-              <div style={{width:52,height:52,borderRadius:3,background:member.avatar_color||'#3e1460',border:`2px solid ${G}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,fontWeight:800,color:G,fontFamily:F,letterSpacing:1.5,flexShrink:0}}>{ini(member.name)}</div>
-              <div><div style={{color:'#fff',fontSize:20,fontWeight:800,fontFamily:F,letterSpacing:1,lineHeight:1}}>{member.name}</div><div style={{color:'#3a3200',fontSize:10,marginTop:5,fontFamily:F,letterSpacing:1}}>Member since {member.joined_at?new Date(member.joined_at).toLocaleDateString('en-US',{month:'long',year:'numeric'}):'—'}</div></div>
+              <div style={{width:62,height:62,borderRadius:4,background:member.avatar_color||'#3e1460',border:`2px solid ${G}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,fontWeight:800,color:G,fontFamily:F,letterSpacing:1.5,flexShrink:0}}>{ini(member.name)}</div>
+              <div><div style={{color:'#fff',fontSize:24,fontWeight:800,fontFamily:F,letterSpacing:1,lineHeight:1}}>{member.name}</div><div style={{color:'#3a3200',fontSize:10,marginTop:5,fontFamily:F,letterSpacing:1}}>Member since {member.joined_at?new Date(member.joined_at).toLocaleDateString('en-US',{month:'long',year:'numeric'}):'—'}</div></div>
             </div>
             <BeltBar belt={member.belt||'White'} stripes={member.stripes||0}/>
           </div>
@@ -244,32 +244,32 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
           </div>
         )}
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:10}}>
-          {[{l:'Sessions',v:cnt,c:G},{l:'Streak',v:`${streak}d`,c:GRN},{l:'Status',v:isOD?'Overdue':'Paid Up',c:isOD?ORG:GRN}].map(s=><div key={s.l} style={{background:CARD,border:`1px solid ${BL}`,borderRadius:4,padding:'12px 8px',textAlign:'center'}}><div style={{color:'#2e2800',fontSize:9,textTransform:'uppercase',letterSpacing:1.5,fontWeight:800,fontFamily:F}}>{s.l}</div><div style={{color:s.c,fontSize:24,fontWeight:800,fontFamily:F,marginTop:4}}>{s.v}</div></div>)}
+          {[{l:'Sessions',v:cnt,c:G},{l:'Streak',v:`${streak}d`,c:GRN},{l:'Status',v:isOD?'Overdue':'Paid Up',c:isOD?ORG:GRN}].map(s=><div key={s.l} style={{background:CARD,border:`1px solid ${BL}`,borderRadius:4,padding:'16px 12px',textAlign:'center'}}><div style={{color:'#2e2800',fontSize:9,textTransform:'uppercase',letterSpacing:1.5,fontWeight:800,fontFamily:F}}>{s.l}</div><div style={{color:s.c,fontSize:30,fontWeight:800,fontFamily:F,marginTop:4}}>{s.v}</div></div>)}
         </div>
-        <Card><div style={{padding:'14px 16px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <Card><div style={{padding:'18px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <div><div style={{color:'#2e2800',fontSize:9,textTransform:'uppercase',letterSpacing:1.5,fontWeight:800,fontFamily:F}}>Next Payment</div><div style={{color:isOD?ORG:'#fff',fontSize:16,fontWeight:800,fontFamily:F,marginTop:4}}>{member.next_payment_date?fmtM(member.next_payment_date):'—'}</div></div>
           <div style={{display:'flex',alignItems:'center',gap:6}}><div style={{width:7,height:7,borderRadius:'50%',background:isOD?ORG:GRN}}/><span style={{color:isOD?ORG:GRN,fontSize:12,fontWeight:800,fontFamily:F,letterSpacing:1}}>{isOD?'Overdue':'Paid Up'}</span></div>
         </div></Card>
-        {next&&<Card><div style={{padding:'14px 16px'}}>
+        {next&&<Card><div style={{padding:'18px 20px'}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:12}}>
             <div><div style={{color:'#2e2800',fontSize:9,textTransform:'uppercase',letterSpacing:1.5,fontWeight:800,fontFamily:F,marginBottom:4}}>Next Milestone</div><div style={{color:'#fff',fontSize:16,fontWeight:800,fontFamily:F}}>{next.i} {next.l}</div></div>
-            <span style={{color:G,fontWeight:800,fontSize:13,fontFamily:F}}>{cnt}/{next.n}</span>
+            <span style={{color:G,fontWeight:800,fontSize:15,fontFamily:F}}>{cnt}/{next.n}</span>
           </div>
           <div style={{height:4,background:'#111',borderRadius:2}}><div style={{height:4,borderRadius:2,background:G,width:`${Math.min((cnt/next.n)*100,100)}%`}}/></div>
           <div style={{color:'#2a2200',fontSize:11,marginTop:8,fontFamily:F}}>{next.n-cnt} sessions to go</div>
         </div></Card>}
-        {earned.length>0&&<Card><div style={{padding:'14px 16px'}}><SLabel>Earned</SLabel><div style={{display:'flex',gap:10,flexWrap:'wrap'}}>{earned.map(m=><div key={m.n} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:5,background:'#111',border:`1px solid ${BL}`,borderRadius:4,padding:'12px 14px',minWidth:70}}><span style={{fontSize:22}}>{m.i}</span><span style={{color:G,fontSize:9,fontWeight:800,textAlign:'center',fontFamily:F,letterSpacing:1,textTransform:'uppercase'}}>{m.l}</span></div>)}</div></div></Card>}
-        <Card><div style={{padding:'14px 16px'}}>
+        {earned.length>0&&<Card><div style={{padding:'18px 20px'}}><SLabel>Earned</SLabel><div style={{display:'flex',gap:10,flexWrap:'wrap'}}>{earned.map(m=><div key={m.n} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:5,background:'#111',border:`1px solid ${BL}`,borderRadius:4,padding:'12px 14px',minWidth:70}}><span style={{fontSize:22}}>{m.i}</span><span style={{color:G,fontSize:9,fontWeight:800,textAlign:'center',fontFamily:F,letterSpacing:1,textTransform:'uppercase'}}>{m.l}</span></div>)}</div></div></Card>}
+        <Card><div style={{padding:'18px 20px'}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}><SLabel>Recent Sessions</SLabel><button onClick={()=>setView('journal')} style={{background:'none',border:'none',color:GD,fontSize:10,cursor:'pointer',fontFamily:F,letterSpacing:1,textTransform:'uppercase',fontWeight:800,padding:0,marginLeft:10}}>View All</button></div>
-          {sessions.slice(0,4).map(s=><div key={s.id} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 0',borderBottom:`1px solid ${BL}`}}><div style={{width:5,height:5,borderRadius:'50%',background:G,flexShrink:0}}/><span style={{color:'#555',fontSize:13,fontFamily:F}}>{fmtS(s.session_date)}</span>{s.note&&<span style={{color:'#2a2a2a',fontSize:12,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.note}</span>}</div>)}
-          {sessions.length===0&&<div style={{color:'#2a2a2a',fontSize:13,fontFamily:F}}>No sessions yet.</div>}
+          {sessions.slice(0,4).map(s=><div key={s.id} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 0',borderBottom:`1px solid ${BL}`}}><div style={{width:5,height:5,borderRadius:'50%',background:G,flexShrink:0}}/><span style={{color:'#555',fontSize:15,fontFamily:F}}>{fmtS(s.session_date)}</span>{s.note&&<span style={{color:'#2a2a2a',fontSize:12,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.note}</span>}</div>)}
+          {sessions.length===0&&<div style={{color:'#2a2a2a',fontSize:15,fontFamily:F}}>No sessions yet.</div>}
         </div></Card>
 
         {/* Top Trainers */}
         <Card>
-          <div style={{padding:'14px 16px'}}>
+          <div style={{padding:'18px 20px'}}>
             <SLabel>Top Trainers</SLabel>
-            {!community.loaded&&<div style={{color:'#2a2a2a',fontSize:13,fontFamily:F}}>Loading...</div>}
+            {!community.loaded&&<div style={{color:'#2a2a2a',fontSize:15,fontFamily:F}}>Loading...</div>}
             {community.topTrainers.map((t,i)=>{
               const maxS=community.topTrainers[0]?.sessions||1;
               const c=BELT_CFG[t.belt]||BELT_CFG.White;
@@ -285,13 +285,13 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
                 <div style={{color:t.id===member.id?G:'#555',fontWeight:800,fontSize:14,fontFamily:F,flexShrink:0,minWidth:28,textAlign:'right'}}>{t.sessions||0}</div>
               </div>;
             })}
-            {community.loaded&&community.topTrainers.length===0&&<div style={{color:'#2a2a2a',fontSize:13,fontFamily:F}}>No data yet.</div>}
+            {community.loaded&&community.topTrainers.length===0&&<div style={{color:'#2a2a2a',fontSize:15,fontFamily:F}}>No data yet.</div>}
           </div>
         </Card>
 
         {/* Recent Promotions */}
         {community.recentPromos.length>0&&<Card>
-          <div style={{padding:'14px 16px'}}>
+          <div style={{padding:'18px 20px'}}>
             <SLabel>Recent Promotions</SLabel>
             {community.recentPromos.map(p=>{
               const bc=b=>({White:'#e8e8e0',Grey:'#888',Yellow:'#c9a227',Orange:'#c97316',Green:'#2a6a2a',Blue:'#1a3a6e',Purple:'#3e1460',Brown:'#4a2000',Black:'#222'}[b]||'#444');
@@ -308,7 +308,7 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
                     <span style={{padding:'1px 5px',background:bc(p.new_belt),borderRadius:2,fontSize:8,fontWeight:800,fontFamily:F,color:btx(p.new_belt),letterSpacing:1,textTransform:'uppercase'}}>{p.new_belt}{!kids(p.new_belt)&&p.new_stripes>0?` ${p.new_stripes}s`:''}</span>
                   </div>
                 </div>
-                <div style={{color:'#333',fontSize:11,fontFamily:F,flexShrink:0}}>{fmtD(p.promoted_at)}</div>
+                <div style={{color:'#333',fontSize:13,fontFamily:F,flexShrink:0}}>{fmtD(p.promoted_at)}</div>
               </div>;
             })}
           </div>
@@ -318,13 +318,13 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
 
       {view==='journal'&&<div>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',marginBottom:18}}>
-          <div><div style={{fontWeight:800,fontSize:22,letterSpacing:2,color:G,textTransform:'uppercase',fontFamily:F}}>Training Journal</div><div style={{color:'#3a3200',fontSize:12,marginTop:3,fontFamily:F}}>{cnt} sessions logged</div></div>
+          <div><div style={{fontWeight:800,fontSize:26,letterSpacing:2,color:G,textTransform:'uppercase',fontFamily:F}}>Training Journal</div><div style={{color:'#3a3200',fontSize:12,marginTop:3,fontFamily:F}}>{cnt} sessions logged</div></div>
           <GBtn onClick={()=>setShowLog(true)} style={{fontSize:11,padding:'8px 14px'}}>+ Log</GBtn>
         </div>
-        <Card><div style={{padding:'4px 16px'}}>
+        <Card><div style={{padding:'8px 20px'}}>
           {[...sessions].sort((a,b)=>new Date(b.session_date)-new Date(a.session_date)).map(s=><div key={s.id} onClick={()=>s.note&&setExpandedId(expandedId===s.id?null:s.id)} style={{padding:'12px 0',borderBottom:`1px solid ${BL}`,cursor:s.note?'pointer':'default'}}>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-              <div style={{display:'flex',alignItems:'center',gap:10}}><div style={{width:6,height:6,borderRadius:'50%',background:G,flexShrink:0}}/><span style={{color:'#fff',fontSize:14,fontWeight:700,fontFamily:F}}>{fmtL(s.session_date)}</span></div>
+              <div style={{display:'flex',alignItems:'center',gap:10}}><div style={{width:6,height:6,borderRadius:'50%',background:G,flexShrink:0}}/><span style={{color:'#fff',fontSize:16,fontWeight:700,fontFamily:F}}>{fmtL(s.session_date)}</span></div>
               {s.note&&<span style={{color:'#333',fontSize:14}}>›</span>}
             </div>
             {s.note&&expandedId!==s.id&&<div style={{color:'#2a2a2a',fontSize:12,marginTop:5,paddingLeft:16,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{s.note}</div>}
@@ -338,22 +338,22 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
         <div style={{fontWeight:800,fontSize:22,letterSpacing:2,color:G,textTransform:'uppercase',fontFamily:F,marginBottom:18}}>Class Schedule</div>
         {DAYS.map((day,di)=>{
           const cls=(initialSchedule||[]).filter(c=>c.day_of_week===di).sort((a,b)=>a.start_time.localeCompare(b.start_time));
-          return <Card key={day}><div style={{display:'flex',gap:14,padding:'14px 16px',alignItems:cls.length?'flex-start':'center'}}>
+          return <Card key={day}><div style={{display:'flex',gap:14,padding:'18px 20px',alignItems:cls.length?'flex-start':'center'}}>
             <div style={{width:44,height:44,borderRadius:3,background:cls.length?GK:'transparent',border:`1.5px solid ${cls.length?GD:BL}`,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:12,fontFamily:F,letterSpacing:1.5,color:cls.length?G:'#2a2a2a',flexShrink:0}}>{DAYSS[di].toUpperCase()}</div>
-            <div style={{flex:1,minWidth:0}}>{cls.length===0?<span style={{color:'#2a2a2a',fontSize:13,fontFamily:F}}>Rest Day</span>:cls.map(c=><div key={c.id} style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginBottom:8}}><span style={{color:G,fontSize:14,fontWeight:800,fontFamily:F,flexShrink:0}}>{c.start_time.slice(0,5)}</span><span style={{color:'#fff',fontSize:14,fontWeight:600,fontFamily:F}}>{c.class_name}</span><TPill type={c.type}/>{c.instructor&&<span style={{color:'#444',fontSize:12,fontFamily:FB}}>{c.instructor}</span>}</div>)}</div>
+            <div style={{flex:1,minWidth:0}}>{cls.length===0?<span style={{color:'#2a2a2a',fontSize:15,fontFamily:F}}>Rest Day</span>:cls.map(c=><div key={c.id} style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginBottom:8}}><span style={{color:G,fontSize:14,fontWeight:800,fontFamily:F,flexShrink:0}}>{c.start_time.slice(0,5)}</span><span style={{color:'#fff',fontSize:14,fontWeight:600,fontFamily:F}}>{c.class_name}</span><TPill type={c.type}/>{c.instructor&&<span style={{color:'#444',fontSize:14,fontFamily:FB}}>{c.instructor}</span>}</div>)}</div>
           </div></Card>;
         })}
       </div>}
 
       {view==='profile'&&<div>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}}>
-          <div style={{fontWeight:800,fontSize:22,letterSpacing:2,color:G,textTransform:'uppercase',fontFamily:F}}>My Profile</div>
+          <div style={{fontWeight:800,fontSize:26,letterSpacing:2,color:G,textTransform:'uppercase',fontFamily:F}}>My Profile</div>
           <GhBtn onClick={openEdit}>Edit</GhBtn>
         </div>
 
         {/* Identity card */}
-        <Card><div style={{padding:'18px',display:'flex',alignItems:'flex-start',gap:14}}>
-          <div style={{width:52,height:52,borderRadius:3,background:member.avatar_color||'#3e1460',border:`2px solid ${G}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,fontWeight:800,color:G,fontFamily:F,letterSpacing:1.5,flexShrink:0}}>{ini(member.name)}</div>
+        <Card><div style={{padding:'22px',display:'flex',alignItems:'flex-start',gap:14}}>
+          <div style={{width:62,height:62,borderRadius:4,background:member.avatar_color||'#3e1460',border:`2px solid ${G}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,fontWeight:800,color:G,fontFamily:F,letterSpacing:1.5,flexShrink:0}}>{ini(member.name)}</div>
           <div style={{flex:1}}>
             <div style={{color:'#fff',fontSize:17,fontWeight:800,fontFamily:F}}>{member.name}</div>
             <div style={{color:'#444',fontSize:12,marginTop:2,fontFamily:FB}}>{member.email}</div>
@@ -364,7 +364,7 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
         </div></Card>
 
         {/* Contact */}
-        <Card><div style={{padding:'14px 16px'}}>
+        <Card><div style={{padding:'18px 20px'}}>
           <SLabel>Contact</SLabel>
           <div style={{display:'flex',flexDirection:'column',gap:10}}>
             {[
@@ -373,13 +373,13 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
               {i:'👨‍👩‍👧',l:'Parent / Guardian',v:member.parent_name},
             ].map(f=>f.v&&<div key={f.l} style={{display:'flex',gap:10,alignItems:'flex-start'}}>
               <span style={{fontSize:15,flexShrink:0,marginTop:1}}>{f.i}</span>
-              <div><div style={{color:'#2e2800',fontSize:9,textTransform:'uppercase',letterSpacing:1.5,fontWeight:800,fontFamily:F}}>{f.l}</div><div style={{color:'#fff',fontSize:14,marginTop:2,fontFamily:FB}}>{f.v}</div></div>
+              <div><div style={{color:'#2e2800',fontSize:9,textTransform:'uppercase',letterSpacing:1.5,fontWeight:800,fontFamily:F}}>{f.l}</div><div style={{color:'#fff',fontSize:15,marginTop:2,fontFamily:FB}}>{f.v}</div></div>
             </div>)}
           </div>
         </div></Card>
 
         {/* Address */}
-        {(member.address_line1||member.city)&&<Card><div style={{padding:'14px 16px'}}>
+        {(member.address_line1||member.city)&&<Card><div style={{padding:'18px 20px'}}>
           <SLabel>Address</SLabel>
           <div style={{display:'flex',gap:10,alignItems:'flex-start'}}>
             <span style={{fontSize:15,flexShrink:0,marginTop:1}}>📍</span>
@@ -392,27 +392,27 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
         </div></Card>}
 
         {/* Emergency contact */}
-        <Card><div style={{padding:'14px 16px'}}>
+        <Card><div style={{padding:'18px 20px'}}>
           <SLabel>Emergency Contact</SLabel>
           <div style={{display:'flex',gap:10,alignItems:'flex-start'}}>
             <span style={{fontSize:15,flexShrink:0,marginTop:1}}>🚨</span>
-            <div><div style={{color:member.emergency_contact?'#fff':'#2a2a2a',fontSize:14,fontFamily:FB}}>{member.emergency_contact||'Not set'}</div></div>
+            <div><div style={{color:member.emergency_contact?'#fff':'#2a2a2a',fontSize:16,fontFamily:FB}}>{member.emergency_contact||'Not set'}</div></div>
           </div>
         </div></Card>
 
         {/* Training background */}
-        {(member.martial_arts_experience||member.physical_limitations||member.allergies_medications||member.height_weight)&&<Card><div style={{padding:'14px 16px'}}>
+        {(member.martial_arts_experience||member.physical_limitations||member.allergies_medications||member.height_weight)&&<Card><div style={{padding:'18px 20px'}}>
           <SLabel>Training Info</SLabel>
           <div style={{display:'flex',flexDirection:'column',gap:12}}>
             {member.martial_arts_experience&&<div><div style={{color:'#2e2800',fontSize:9,textTransform:'uppercase',letterSpacing:1.5,fontWeight:800,fontFamily:F,marginBottom:3}}>Martial Arts Experience</div><div style={{color:'#888',fontSize:13,fontFamily:FB,lineHeight:1.5}}>{member.martial_arts_experience}</div></div>}
             {member.physical_limitations&&<div><div style={{color:'#2e2800',fontSize:9,textTransform:'uppercase',letterSpacing:1.5,fontWeight:800,fontFamily:F,marginBottom:3}}>Physical Limitations</div><div style={{color:'#888',fontSize:13,fontFamily:FB,lineHeight:1.5}}>{member.physical_limitations}</div></div>}
             {member.allergies_medications&&<div><div style={{color:'#2e2800',fontSize:9,textTransform:'uppercase',letterSpacing:1.5,fontWeight:800,fontFamily:F,marginBottom:3}}>Allergies / Medications</div><div style={{color:'#888',fontSize:13,fontFamily:FB,lineHeight:1.5}}>{member.allergies_medications}</div></div>}
-            {member.height_weight&&<div><div style={{color:'#2e2800',fontSize:9,textTransform:'uppercase',letterSpacing:1.5,fontWeight:800,fontFamily:F,marginBottom:3}}>Height / Weight</div><div style={{color:'#888',fontSize:13,fontFamily:FB}}>{member.height_weight}</div></div>}
+            {member.height_weight&&<div><div style={{color:'#2e2800',fontSize:9,textTransform:'uppercase',letterSpacing:1.5,fontWeight:800,fontFamily:F,marginBottom:3}}>Height / Weight</div><div style={{color:'#888',fontSize:15,fontFamily:FB}}>{member.height_weight}</div></div>}
           </div>
         </div></Card>}
 
         {/* Membership */}
-        <Card><div style={{padding:'14px 16px'}}>
+        <Card><div style={{padding:'18px 20px'}}>
           <SLabel>Membership</SLabel>
           <div style={{display:'flex',flexDirection:'column',gap:8}}>
             <div style={{display:'flex',justifyContent:'space-between'}}>
@@ -421,7 +421,7 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
             </div>
             {member.waiver_signed_at&&<div style={{paddingTop:8,borderTop:`1px solid ${BL}`}}>
               <div style={{color:'#2e2800',fontSize:9,textTransform:'uppercase',letterSpacing:1.5,fontWeight:800,fontFamily:F,marginBottom:3}}>Waiver Signed</div>
-              <div style={{color:'#555',fontSize:13,fontFamily:FB}}>{new Date(member.waiver_signed_at).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})} {member.waiver_signed_by&&member.waiver_signed_by!==member.name?`by ${member.waiver_signed_by}`:''}</div>
+              <div style={{color:'#555',fontSize:15,fontFamily:FB}}>{new Date(member.waiver_signed_at).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})} {member.waiver_signed_by&&member.waiver_signed_by!==member.name?`by ${member.waiver_signed_by}`:''}</div>
             </div>}
           </div>
         </div></Card>
@@ -433,24 +433,24 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
         <div style={{fontWeight:800,fontSize:22,letterSpacing:2,color:G,textTransform:'uppercase',fontFamily:F,marginBottom:18}}>Class Schedule</div>
         {DAYS.map((day,di)=>{
           const cls=(initialSchedule||[]).filter(c=>c.day_of_week===di).sort((a,b)=>a.start_time.localeCompare(b.start_time));
-          return <Card key={day}><div style={{display:'flex',gap:14,padding:'14px 16px',alignItems:cls.length?'flex-start':'center'}}>
+          return <Card key={day}><div style={{display:'flex',gap:14,padding:'18px 20px',alignItems:cls.length?'flex-start':'center'}}>
             <div style={{width:44,height:44,borderRadius:3,background:cls.length?GK:'transparent',border:`1.5px solid ${cls.length?GD:BL}`,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:12,fontFamily:F,letterSpacing:1.5,color:cls.length?G:'#2a2a2a',flexShrink:0}}>{DAYSS[di].toUpperCase()}</div>
-            <div style={{flex:1,minWidth:0}}>{cls.length===0?<span style={{color:'#2a2a2a',fontSize:13,fontFamily:F}}>Rest Day</span>:cls.map(c=><div key={c.id} style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginBottom:8}}><span style={{color:G,fontSize:14,fontWeight:800,fontFamily:F,flexShrink:0}}>{c.start_time.slice(0,5)}</span><span style={{color:'#fff',fontSize:14,fontWeight:600,fontFamily:F}}>{c.class_name}</span><TPill type={c.type}/>{c.instructor&&<span style={{color:'#444',fontSize:12,fontFamily:FB}}>{c.instructor}</span>}</div>)}</div>
+            <div style={{flex:1,minWidth:0}}>{cls.length===0?<span style={{color:'#2a2a2a',fontSize:15,fontFamily:F}}>Rest Day</span>:cls.map(c=><div key={c.id} style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginBottom:8}}><span style={{color:G,fontSize:14,fontWeight:800,fontFamily:F,flexShrink:0}}>{c.start_time.slice(0,5)}</span><span style={{color:'#fff',fontSize:14,fontWeight:600,fontFamily:F}}>{c.class_name}</span><TPill type={c.type}/>{c.instructor&&<span style={{color:'#444',fontSize:14,fontFamily:FB}}>{c.instructor}</span>}</div>)}</div>
           </div></Card>;
         })}
       </div>}
 
       {view==='profile'&&<div>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}}>
-          <div style={{fontWeight:800,fontSize:22,letterSpacing:2,color:G,textTransform:'uppercase',fontFamily:F}}>My Profile</div>
+          <div style={{fontWeight:800,fontSize:26,letterSpacing:2,color:G,textTransform:'uppercase',fontFamily:F}}>My Profile</div>
           <GhBtn onClick={openEdit}>Edit</GhBtn>
         </div>
-        <Card><div style={{padding:'18px',display:'flex',alignItems:'flex-start',gap:14}}>
-          <div style={{width:52,height:52,borderRadius:3,background:member.avatar_color||'#3e1460',border:`2px solid ${G}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,fontWeight:800,color:G,fontFamily:F,letterSpacing:1.5,flexShrink:0}}>{ini(member.name)}</div>
+        <Card><div style={{padding:'22px',display:'flex',alignItems:'flex-start',gap:14}}>
+          <div style={{width:62,height:62,borderRadius:4,background:member.avatar_color||'#3e1460',border:`2px solid ${G}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,fontWeight:800,color:G,fontFamily:F,letterSpacing:1.5,flexShrink:0}}>{ini(member.name)}</div>
           <div><div style={{color:'#fff',fontSize:17,fontWeight:800,fontFamily:F}}>{member.name}</div><div style={{color:'#444',fontSize:12,marginTop:2,fontFamily:FB}}>{member.email}</div><div style={{marginTop:10}}><BeltBar belt={member.belt||'White'} stripes={member.stripes||0}/></div></div>
         </div></Card>
-        {[{l:'Phone',v:member.phone,i:'📱'},{l:'Address',v:member.address,i:'📍'},{l:'Emergency Contact',v:member.emergency_contact,i:'🚨'}].map(f=><Card key={f.l}><div style={{padding:'14px 16px',display:'flex',gap:12,alignItems:'flex-start'}}><span style={{fontSize:17,flexShrink:0,marginTop:1}}>{f.i}</span><div><div style={{color:'#2e2800',fontSize:9,textTransform:'uppercase',letterSpacing:1.5,fontWeight:800,fontFamily:F}}>{f.l}</div><div style={{color:f.v?'#fff':'#2a2a2a',fontSize:14,marginTop:4,fontFamily:FB}}>{f.v||'Not set'}</div></div></div></Card>)}
-        <Card><div style={{padding:'14px 16px'}}><SLabel>Membership</SLabel><div style={{display:'flex',justifyContent:'space-between'}}>
+        {[{l:'Phone',v:member.phone,i:'📱'},{l:'Address',v:member.address,i:'📍'},{l:'Emergency Contact',v:member.emergency_contact,i:'🚨'}].map(f=><Card key={f.l}><div style={{padding:'18px 20px',display:'flex',gap:12,alignItems:'flex-start'}}><span style={{fontSize:17,flexShrink:0,marginTop:1}}>{f.i}</span><div><div style={{color:'#2e2800',fontSize:9,textTransform:'uppercase',letterSpacing:1.5,fontWeight:800,fontFamily:F}}>{f.l}</div><div style={{color:f.v?'#fff':'#2a2a2a',fontSize:16,marginTop:4,fontFamily:FB}}>{f.v||'Not set'}</div></div></div></Card>)}
+        <Card><div style={{padding:'18px 20px'}}><SLabel>Membership</SLabel><div style={{display:'flex',justifyContent:'space-between'}}>
           <div><div style={{color:'#2e2800',fontSize:9,textTransform:'uppercase',letterSpacing:1.5,fontWeight:800,fontFamily:F}}>Joined</div><div style={{color:'#fff',fontSize:14,fontWeight:700,fontFamily:F,marginTop:4}}>{member.joined_at?fmtM(member.joined_at):'—'}</div></div>
           <div style={{textAlign:'right'}}><div style={{color:'#2e2800',fontSize:9,textTransform:'uppercase',letterSpacing:1.5,fontWeight:800,fontFamily:F}}>Next Billing</div><div style={{color:isOD?ORG:GRN,fontSize:14,fontWeight:700,fontFamily:F,marginTop:4}}>{member.next_payment_date?fmtM(member.next_payment_date):'—'}</div></div>
         </div></div></Card>

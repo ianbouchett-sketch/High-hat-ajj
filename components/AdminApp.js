@@ -22,19 +22,19 @@ const fmt=d=>new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric'
 const todayStr=()=>new Date().toISOString().split('T')[0];
 const fmtPrice=c=>'$'+(c/100).toFixed(2);
 
-function SLabel({ch}){return <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}><div style={{width:12,height:1,background:G,opacity:.5}}/><span style={{color:GD,fontSize:9,fontWeight:800,letterSpacing:2,textTransform:'uppercase',fontFamily:F}}>{ch}</span><div style={{flex:1,height:1,background:BL}}/></div>}
-function Card({ch,style={}}){return <div style={{background:CARD,border:`1px solid ${BL}`,borderRadius:5,marginBottom:8,overflow:'hidden',...style}}>{ch}</div>}
+function SLabel({ch}){return <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}><div style={{width:12,height:1,background:G,opacity:.5}}/><span style={{color:GD,fontSize:11,fontWeight:800,letterSpacing:2,textTransform:'uppercase',fontFamily:F}}>{ch}</span><div style={{flex:1,height:1,background:BL}}/></div>}
+function Card({ch,style={}}){return <div style={{background:CARD,border:`1px solid ${BL}`,borderRadius:8,marginBottom:10,overflow:'hidden',...style}}>{ch}</div>}
 function GBtn({ch,onClick,style={},small,disabled}){return <button onClick={onClick} disabled={disabled} style={{padding:small?'6px 14px':'9px 18px',background:G,border:'none',borderRadius:3,color:'#000',fontWeight:800,fontSize:small?11:13,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',opacity:disabled?.5:1,...style}}>{ch}</button>}
 function GhBtn({ch,onClick,style={}}){return <button onClick={onClick} style={{padding:'7px 14px',background:'transparent',border:`1px solid ${BL}`,borderRadius:3,color:'#555',fontSize:11,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',...style}}>{ch}</button>}
 function DBtn({ch,onClick,style={},disabled}){return <button onClick={onClick} disabled={disabled} style={{padding:'7px 14px',background:'transparent',border:'1px solid #7a2020',borderRadius:3,color:'#c94040',fontSize:11,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',opacity:disabled?.5:1,...style}}>{ch}</button>}
 function BB({belt,stripes,lg}){const c=BELT_CFG[belt]||BELT_CFG.White,sc=belt==='White'?'#111':'#fff';const kids=isKidsBelt(belt);const h=lg?22:16,w=kids?(lg?70:52):(lg?90:64),sw=lg?6:4;return <div style={{display:'inline-flex',alignItems:'center',justifyContent:'center',background:c.bg,border:`1.5px solid ${c.br}`,borderRadius:2,width:w,height:h,padding:'0 6px',flexShrink:0,gap:2}}><span style={{fontSize:lg?9:7,fontWeight:800,fontFamily:F,color:c.tx,letterSpacing:1,textTransform:'uppercase'}}>{belt}</span>{!kids&&<div style={{display:'flex',gap:2}}>{[0,1,2,3,4].map(i=><div key={i} style={{width:sw,height:h-4,borderRadius:1,background:i<stripes?sc:'transparent',border:`1px solid ${i<stripes?sc:(belt==='White'?'#aaa':c.br)}`,opacity:i<stripes?1:0.3}}/>)}</div>}</div>}
 function SDot({status}){return <span style={{display:'inline-block',width:7,height:7,borderRadius:'50%',background:{active:GRN,overdue:ORG,inactive:'#444',pending:'#3a7abd'}[status]||'#444',flexShrink:0}}/>}
 function TPill({type}){const c=TYPE_CFG[type]||TYPE_CFG.Other;return <span style={{padding:'2px 7px',background:c.bg,border:`1px solid ${c.br}`,borderRadius:2,fontSize:9,fontWeight:800,fontFamily:F,color:'#fff',letterSpacing:1,textTransform:'uppercase'}}>{type}</span>}
-function FL({ch}){return <div style={{color:GD,fontSize:10,letterSpacing:1.5,textTransform:'uppercase',marginBottom:6,fontWeight:800,fontFamily:F}}>{ch}</div>}
-const inp={width:'100%',background:'#111',border:`1px solid ${BL}`,borderRadius:3,padding:'10px 12px',color:'#fff',fontSize:14,outline:'none',fontFamily:FB,WebkitAppearance:'none',colorScheme:'dark',boxSizing:'border-box'};
+function FL({ch}){return <div style={{color:GD,fontSize:12,letterSpacing:1.5,textTransform:'uppercase',marginBottom:8,fontWeight:800,fontFamily:F}}>{ch}</div>}
+const inp={width:'100%',background:'#111',border:`1px solid ${BL}`,borderRadius:4,padding:'12px 16px',color:'#fff',fontSize:16,outline:'none',fontFamily:FB,WebkitAppearance:'none',colorScheme:'dark',boxSizing:'border-box'};
 function FI({value,onChange,placeholder,type='text'}){return <input type={type} value={value} onChange={onChange} placeholder={placeholder} style={inp}/>}
 function FS({value,onChange,options}){return <select value={value} onChange={onChange} style={inp}>{options.map(o=>typeof o==='object'?<option key={o.v} value={o.v}>{o.l}</option>:<option key={o}>{o}</option>)}</select>}
-function Modal({open,onClose,title,ch,wide}){if(!open)return null;return <div onClick={e=>e.target===e.currentTarget&&onClose()} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.92)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}><div style={{background:'#0a0a0a',border:`1px solid ${BL}`,borderRadius:6,width:'100%',maxWidth:wide?480:420,maxHeight:'90vh',overflowY:'auto'}}><div style={{height:3,background:G,opacity:.85}}/><div style={{padding:24}}><div style={{fontWeight:800,fontSize:18,letterSpacing:2,color:'#fff',textTransform:'uppercase',marginBottom:20,fontFamily:F}}>{title}</div>{ch}</div></div></div>}
+function Modal({open,onClose,title,ch,wide}){if(!open)return null;return <div onClick={e=>e.target===e.currentTarget&&onClose()} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.92)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}><div style={{background:'#0a0a0a',border:`1px solid ${BL}`,borderRadius:6,width:'100%',maxWidth:wide?480:420,maxHeight:'90vh',overflowY:'auto'}}><div style={{height:3,background:G,opacity:.85}}/><div style={{padding:28}}><div style={{fontWeight:800,fontSize:20,letterSpacing:2,color:'#fff',textTransform:'uppercase',marginBottom:22,fontFamily:F}}>{title}</div>{ch}</div></div></div>}
 
 function Logo(){
   return <div style={{display:'flex',alignItems:'center',gap:10}}>
@@ -73,20 +73,20 @@ function RosterView({members,setMembers,openDetail}){
   return <>
     <input value={search} onChange={e=>setSrch(e.target.value)} placeholder="Search members..." style={{...inp,marginBottom:12,background:CARD}}/>
     <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap',alignItems:'center'}}>
-      {['all','pending','active','overdue','inactive'].map(f=><button key={f} onClick={()=>setF(f)} style={{padding:'6px 14px',background:filter===f?GK:'transparent',border:`1px solid ${filter===f?GD:BL}`,borderRadius:3,color:filter===f?G:'#555',fontSize:11,fontWeight:800,fontFamily:F,letterSpacing:1.5,textTransform:'uppercase',cursor:'pointer'}}>{f}</button>)}
+      {['all','pending','active','overdue','inactive'].map(f=><button key={f} onClick={()=>setF(f)} style={{padding:'8px 16px',background:filter===f?GK:'transparent',border:`1px solid ${filter===f?GD:BL}`,borderRadius:3,color:filter===f?G:'#555',fontSize:11,fontWeight:800,fontFamily:F,letterSpacing:1.5,textTransform:'uppercase',cursor:'pointer'}}>{f}</button>)}
       <GBtn ch="+ Member" onClick={()=>setAdd(true)} small style={{marginLeft:'auto'}}/>
     </div>
     {list.map(m=>{
       const sc=m.status==='overdue'?ORG:m.status==='active'?GRN:m.status==='pending'?'#3a7abd':'#444';
       const od=m.status==='overdue'&&m.last_payment?dOD(m.last_payment):0;
-      return <div key={m.id} style={{background:CARD,border:`1px solid ${BL}`,borderRadius:5,marginBottom:8,overflow:'hidden'}}>
-        <div onClick={()=>openDetail(m.id)} style={{display:'flex',alignItems:'center',gap:12,padding:'12px 16px',cursor:'pointer'}}>
-          <div style={{width:38,height:38,borderRadius:3,background:'#141400',border:`1.5px solid ${GD}`,display:'flex',alignItems:'center',justifyContent:'center',color:G,fontSize:13,fontWeight:800,fontFamily:F,flexShrink:0}}>{ini(m.name)}</div>
+      return <div key={m.id} style={{background:CARD,border:`1px solid ${BL}`,borderRadius:8,marginBottom:10,overflow:'hidden'}}>
+        <div onClick={()=>openDetail(m.id)} style={{display:'flex',alignItems:'center',gap:12,padding:'16px 20px',cursor:'pointer'}}>
+          <div style={{width:44,height:44,borderRadius:4,background:'#141400',border:`1.5px solid ${GD}`,display:'flex',alignItems:'center',justifyContent:'center',color:G,fontSize:13,fontWeight:800,fontFamily:F,flexShrink:0}}>{ini(m.name)}</div>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{color:'#fff',fontSize:14,fontWeight:700,fontFamily:F,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{m.name}</div>
+            <div style={{color:'#fff',fontSize:16,fontWeight:700,fontFamily:F,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{m.name}</div>
             <div style={{marginTop:5}}><BB belt={m.belt||'White'} stripes={m.stripes||0}/></div>
           </div>
-          <div style={{display:'flex',alignItems:'center',gap:5,flexShrink:0}}><SDot status={m.status}/><span style={{fontSize:12,color:sc,fontFamily:F,fontWeight:700}}>{m.status==='overdue'?`${od}d overdue`:m.status}</span></div>
+          <div style={{display:'flex',alignItems:'center',gap:5,flexShrink:0}}><SDot status={m.status}/><span style={{fontSize:14,color:sc,fontFamily:F,fontWeight:700}}>{m.status==='overdue'?`${od}d overdue`:m.status}</span></div>
         </div>
       </div>;
     })}
@@ -198,7 +198,7 @@ function DetailModal({id,members,setMembers,onClose}){
   return <Modal open title="Member" onClose={onClose} wide ch={<>
     <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:16}}>
       <div style={{width:48,height:48,borderRadius:3,background:'#141400',border:`2px solid ${G}`,display:'flex',alignItems:'center',justifyContent:'center',color:G,fontSize:16,fontWeight:800,fontFamily:F,flexShrink:0}}>{ini(m.name)}</div>
-      <div><div style={{color:'#fff',fontSize:17,fontWeight:800,fontFamily:F}}>{m.name}</div><div style={{color:'#444',fontSize:12,fontFamily:FB,marginTop:1}}>{m.email}</div><div style={{marginTop:6}}><BB belt={m.belt||'White'} stripes={m.stripes||0} lg/></div></div>
+      <div><div style={{color:'#fff',fontSize:20,fontWeight:800,fontFamily:F}}>{m.name}</div><div style={{color:'#444',fontSize:12,fontFamily:FB,marginTop:1}}>{m.email}</div><div style={{marginTop:6}}><BB belt={m.belt||'White'} stripes={m.stripes||0} lg/></div></div>
     </div>
     {(m.phone||m.emergency_contact)&&<div style={{background:'#111',border:`1px solid ${BL}`,borderRadius:4,padding:'10px 14px',marginBottom:12}}>
       {m.phone&&<div style={{color:'#888',fontSize:13,fontFamily:FB,marginBottom:3}}>📱 {m.phone}</div>}
@@ -209,7 +209,7 @@ function DetailModal({id,members,setMembers,onClose}){
     </div>
     {m.status==='overdue'&&<div style={{background:'#1a0800',border:'1px solid #7a3300',borderRadius:4,padding:'10px 14px',marginBottom:12,color:ORG,fontSize:13,fontFamily:FB}}>Payment {od} day{od!==1?'s':''} overdue</div>}
     {/* Primary/Dependent linking */}
-    <div style={{background:'#111',border:`1px solid ${BL}`,borderRadius:4,padding:'14px 16px',marginBottom:12}}>
+    <div style={{background:'#111',border:`1px solid ${BL}`,borderRadius:4,padding:'18px 20px',marginBottom:12}}>
       <SLabel ch="Family / Payment Link"/>
       {primaryMember&&<div style={{color:'#888',fontSize:13,fontFamily:FB,marginBottom:8}}>
         Paying via <span style={{color:G,fontWeight:700}}>{primaryMember.name}</span>
@@ -237,7 +237,7 @@ function DetailModal({id,members,setMembers,onClose}){
       </div>}
     </div>
 
-    <div style={{background:'#111',border:`1px solid ${BL}`,borderRadius:4,padding:'14px 16px',marginBottom:12}}>
+    <div style={{background:'#111',border:`1px solid ${BL}`,borderRadius:4,padding:'18px 20px',marginBottom:12}}>
       <SLabel ch="Payment"/>
       <div style={{display:'flex',justifyContent:'space-between'}}>
         <div><div style={{color:'#444',fontSize:11,fontFamily:FB}}>Last paid</div><div style={{color:'#fff',fontSize:14,fontWeight:700,fontFamily:F,marginTop:2}}>{m.last_payment?fmt(m.last_payment):'—'}</div></div>
@@ -245,7 +245,7 @@ function DetailModal({id,members,setMembers,onClose}){
       </div>
       {m.stripe_customer_id&&<a href={`https://dashboard.stripe.com/customers/${m.stripe_customer_id}`} target="_blank" rel="noreferrer" style={{display:'block',marginTop:10,textAlign:'center',padding:'8px',border:`1px solid ${BL}`,borderRadius:3,color:GD,fontSize:11,fontFamily:F,letterSpacing:1,textTransform:'uppercase',textDecoration:'none'}}>View in Stripe ↗</a>}
     </div>
-    <div style={{background:'#111',border:`1px solid ${BL}`,borderRadius:4,padding:'14px 16px',marginBottom:12}}>
+    <div style={{background:'#111',border:`1px solid ${BL}`,borderRadius:4,padding:'18px 20px',marginBottom:12}}>
       <SLabel ch="Update Belt"/>
       <div style={{display:'flex',gap:8,alignItems:'center'}}>
         <div style={{flex:1}}><FS value={belt} onChange={e=>{setBelt(e.target.value);if(isKidsBelt(e.target.value))setStr(0);}} options={BELTS}/></div>
@@ -268,7 +268,7 @@ function DetailModal({id,members,setMembers,onClose}){
     <DBtn ch="Delete Member" onClick={deleteMember} style={{flex:1,textAlign:'center'}} disabled={sv}/>
   </div>
   {m.status==='pending'&&!showPayLink&&<button onClick={()=>setShowPayLink(true)} style={{marginTop:8,width:'100%',padding:'12px',background:'#0a1a3a',border:'1px solid #2a5a8a',borderRadius:4,color:'#3a7abd',fontSize:12,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>Send Payment Link</button>}
-  {showPayLink&&<div style={{marginTop:8,background:'#0a1020',border:'1px solid #2a3a5a',borderRadius:4,padding:'16px'}}>
+  {showPayLink&&<div style={{marginTop:8,background:'#0a1020',border:'1px solid #2a3a5a',borderRadius:4,padding:'20px'}}>
     <div style={{color:'#3a7abd',fontSize:11,fontWeight:800,fontFamily:F,letterSpacing:1.5,textTransform:'uppercase',marginBottom:12}}>Generate Payment Link</div>
     <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:12}}>
       <div style={{color:'#fff',fontSize:16,fontWeight:800,fontFamily:F}}>$</div>
@@ -292,15 +292,15 @@ function PaymentsView({members,setMembers}){
   const [sv,setSv]=useState(null);
   async function markPaid(id){setSv(id);const lp=todayStr();const nx=new Date();nx.setMonth(nx.getMonth()+1);await supabase.from('members').update({status:'active',last_payment:lp,next_payment_date:nx.toISOString().split('T')[0]}).eq('id',id);setMembers(ms=>ms.map(m=>m.id===id?{...m,status:'active',last_payment:lp}:m));setSv(null);}
   return <>
-    {od>0&&<div style={{background:'#120700',border:'1px solid #7a3300',borderRadius:4,padding:'14px 16px',marginBottom:14,color:ORG,fontSize:14,fontFamily:F,fontWeight:700}}>{od} member{od!==1?'s':''} with overdue payments</div>}
+    {od>0&&<div style={{background:'#120700',border:'1px solid #7a3300',borderRadius:4,padding:'18px 20px',marginBottom:14,color:ORG,fontSize:14,fontFamily:F,fontWeight:700}}>{od} member{od!==1?'s':''} with overdue payments</div>}
     {sorted.map(m=>{
       const isOD=m.status==='overdue';const od2=isOD&&m.last_payment?dOD(m.last_payment):0;
       const nx=m.last_payment?new Date(m.last_payment):null;if(nx)nx.setMonth(nx.getMonth()+1);
       return <div key={m.id} style={{background:isOD?'#0e0600':CARD,border:`1px solid ${isOD?'#3a1800':BL}`,borderRadius:5,marginBottom:8,overflow:'hidden'}}>
-        <div style={{padding:'14px 16px'}}>
+        <div style={{padding:'18px 20px'}}>
           <div style={{display:'flex',alignItems:'center',gap:12}}>
-            <div style={{width:36,height:36,borderRadius:3,background:'#141400',border:`1.5px solid ${GD}`,display:'flex',alignItems:'center',justifyContent:'center',color:G,fontSize:12,fontWeight:800,fontFamily:F,flexShrink:0}}>{ini(m.name)}</div>
-            <div style={{flex:1,minWidth:0}}><div style={{color:'#fff',fontSize:14,fontWeight:700,fontFamily:F,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{m.name}</div><div style={{color:'#333',fontSize:11,marginTop:2,fontFamily:F}}>Last paid {m.last_payment?fmt(m.last_payment):'never'}</div></div>
+            <div style={{width:42,height:42,borderRadius:4,background:'#141400',border:`1.5px solid ${GD}`,display:'flex',alignItems:'center',justifyContent:'center',color:G,fontSize:12,fontWeight:800,fontFamily:F,flexShrink:0}}>{ini(m.name)}</div>
+            <div style={{flex:1,minWidth:0}}><div style={{color:'#fff',fontSize:16,fontWeight:700,fontFamily:F,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{m.name}</div><div style={{color:'#333',fontSize:11,marginTop:2,fontFamily:F}}>Last paid {m.last_payment?fmt(m.last_payment):'never'}</div></div>
             <div style={{textAlign:'right',flexShrink:0}}><div style={{color:'#2e2800',fontSize:9,fontFamily:F,fontWeight:700,letterSpacing:1,textTransform:'uppercase'}}>{isOD?'Overdue':'Next due'}</div><div style={{color:isOD?ORG:m.status==='active'?GRN:'#444',fontSize:14,fontWeight:800,fontFamily:F,marginTop:2}}>{isOD?`${od2} days`:nx?nx.toLocaleDateString('en-US',{month:'short',day:'numeric'}):'—'}</div></div>
           </div>
           <div style={{display:'flex',gap:8,marginTop:m.status!=='active'?12:8,flexWrap:'wrap'}}>
@@ -330,7 +330,7 @@ function ScheduleView({schedule,setSchedule}){
         <GBtn ch="+ Class" onClick={()=>openEdit(null)} small/>
       </div>
     </div>
-    {mode==='week'?DAYS.map((day,di)=>{const cls=schedule.filter(c=>c.day_of_week===di).sort((a,b)=>a.start_time.localeCompare(b.start_time));return <div key={day} style={{background:CARD,border:`1px solid ${BL}`,borderRadius:5,marginBottom:8,overflow:'hidden'}}><div style={{display:'flex',gap:14,padding:'14px 16px',alignItems:cls.length?'flex-start':'center'}}><div style={{width:44,height:44,borderRadius:3,background:cls.length?GK:'transparent',border:`1.5px solid ${cls.length?GD:BL}`,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:12,fontFamily:F,letterSpacing:1.5,color:cls.length?G:'#2a2a2a',flexShrink:0}}>{DAYSS[di].toUpperCase()}</div><div style={{flex:1,minWidth:0}}>{cls.length===0?<span style={{color:'#2a2a2a',fontSize:13,fontFamily:F}}>Rest Day</span>:cls.map(c=><div key={c.id} style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginBottom:8}}><span style={{color:G,fontSize:14,fontWeight:800,fontFamily:F,flexShrink:0}}>{c.start_time.slice(0,5)}</span><span style={{color:'#fff',fontSize:14,fontWeight:600,fontFamily:F}}>{c.class_name}</span><TPill type={c.type}/>{c.instructor&&<span style={{color:'#444',fontSize:12,fontFamily:FB}}>{c.instructor}</span>}<div style={{marginLeft:'auto',display:'flex',gap:5}}><button onClick={()=>openEdit(c)} style={{padding:'3px 10px',background:'transparent',border:`1px solid ${BL}`,borderRadius:3,color:'#555',fontSize:10,fontFamily:F,cursor:'pointer'}}>Edit</button><button onClick={()=>del(c.id)} style={{padding:'3px 10px',background:'transparent',border:'1px solid #3a1000',borderRadius:3,color:'#6a2a00',fontSize:10,fontFamily:F,cursor:'pointer'}}>Remove</button></div></div>)}</div></div></div>;}):sorted.map(c=><div key={c.id} style={{background:CARD,border:`1px solid ${BL}`,borderRadius:5,marginBottom:6,overflow:'hidden'}}><div style={{display:'flex',alignItems:'center',gap:10,padding:'12px 16px',flexWrap:'wrap'}}><span style={{color:GD,fontSize:12,fontFamily:F,fontWeight:700,width:28,flexShrink:0}}>{DAYSS[c.day_of_week]?.toUpperCase()}</span><span style={{color:G,fontSize:14,fontWeight:800,fontFamily:F,flexShrink:0}}>{c.start_time.slice(0,5)}</span><span style={{color:'#fff',fontSize:14,fontWeight:600,fontFamily:F}}>{c.class_name}</span><TPill type={c.type}/>{c.instructor&&<span style={{color:'#444',fontSize:12,fontFamily:FB}}>{c.instructor}</span>}<div style={{marginLeft:'auto',display:'flex',gap:5}}><button onClick={()=>openEdit(c)} style={{padding:'4px 10px',background:'transparent',border:`1px solid ${BL}`,borderRadius:3,color:'#555',fontSize:10,fontFamily:F,cursor:'pointer'}}>Edit</button><button onClick={()=>del(c.id)} style={{padding:'4px 10px',background:'transparent',border:'1px solid #3a1000',borderRadius:3,color:'#6a2a00',fontSize:10,fontFamily:F,cursor:'pointer'}}>Remove</button></div></div></div>)}
+    {mode==='week'?DAYS.map((day,di)=>{const cls=schedule.filter(c=>c.day_of_week===di).sort((a,b)=>a.start_time.localeCompare(b.start_time));return <div key={day} style={{background:CARD,border:`1px solid ${BL}`,borderRadius:8,marginBottom:10,overflow:'hidden'}}><div style={{display:'flex',gap:14,padding:'18px 20px',alignItems:cls.length?'flex-start':'center'}}><div style={{width:44,height:44,borderRadius:3,background:cls.length?GK:'transparent',border:`1.5px solid ${cls.length?GD:BL}`,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:12,fontFamily:F,letterSpacing:1.5,color:cls.length?G:'#2a2a2a',flexShrink:0}}>{DAYSS[di].toUpperCase()}</div><div style={{flex:1,minWidth:0}}>{cls.length===0?<span style={{color:'#2a2a2a',fontSize:13,fontFamily:F}}>Rest Day</span>:cls.map(c=><div key={c.id} style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginBottom:8}}><span style={{color:G,fontSize:16,fontWeight:800,fontFamily:F,flexShrink:0}}>{c.start_time.slice(0,5)}</span><span style={{color:'#fff',fontSize:16,fontWeight:600,fontFamily:F}}>{c.class_name}</span><TPill type={c.type}/>{c.instructor&&<span style={{color:'#444',fontSize:12,fontFamily:FB}}>{c.instructor}</span>}<div style={{marginLeft:'auto',display:'flex',gap:5}}><button onClick={()=>openEdit(c)} style={{padding:'3px 10px',background:'transparent',border:`1px solid ${BL}`,borderRadius:3,color:'#555',fontSize:10,fontFamily:F,cursor:'pointer'}}>Edit</button><button onClick={()=>del(c.id)} style={{padding:'3px 10px',background:'transparent',border:'1px solid #3a1000',borderRadius:3,color:'#6a2a00',fontSize:10,fontFamily:F,cursor:'pointer'}}>Remove</button></div></div>)}</div></div></div>;}):sorted.map(c=><div key={c.id} style={{background:CARD,border:`1px solid ${BL}`,borderRadius:5,marginBottom:6,overflow:'hidden'}}><div style={{display:'flex',alignItems:'center',gap:10,padding:'16px 20px',flexWrap:'wrap'}}><span style={{color:GD,fontSize:12,fontFamily:F,fontWeight:700,width:28,flexShrink:0}}>{DAYSS[c.day_of_week]?.toUpperCase()}</span><span style={{color:G,fontSize:16,fontWeight:800,fontFamily:F,flexShrink:0}}>{c.start_time.slice(0,5)}</span><span style={{color:'#fff',fontSize:16,fontWeight:600,fontFamily:F}}>{c.class_name}</span><TPill type={c.type}/>{c.instructor&&<span style={{color:'#444',fontSize:12,fontFamily:FB}}>{c.instructor}</span>}<div style={{marginLeft:'auto',display:'flex',gap:5}}><button onClick={()=>openEdit(c)} style={{padding:'4px 10px',background:'transparent',border:`1px solid ${BL}`,borderRadius:3,color:'#555',fontSize:10,fontFamily:F,cursor:'pointer'}}>Edit</button><button onClick={()=>del(c.id)} style={{padding:'4px 10px',background:'transparent',border:'1px solid #3a1000',borderRadius:3,color:'#6a2a00',fontSize:10,fontFamily:F,cursor:'pointer'}}>Remove</button></div></div></div>)}
     <Modal open={modal!==null} onClose={()=>setModal(null)} title={modal==='new'?'Add Class':'Edit Class'} ch={<div style={{display:'flex',flexDirection:'column',gap:14}}><div style={{display:'flex',gap:12}}><div style={{flex:1}}><FL ch="Day"/><FS value={form.day_of_week} onChange={e=>setForm(f=>({...f,day_of_week:+e.target.value}))} options={DAYS.map((d,i)=>({v:i,l:d}))}/></div><div style={{flex:1}}><FL ch="Time"/><input type="time" value={form.start_time} onChange={e=>setForm(f=>({...f,start_time:e.target.value}))} style={{...inp}}/></div></div><div><FL ch="Class Name"/><FI value={form.class_name} onChange={e=>setForm(f=>({...f,class_name:e.target.value}))} placeholder="e.g. Fundamentals"/></div><div style={{display:'flex',gap:12}}><div style={{flex:1}}><FL ch="Type"/><FS value={form.type} onChange={e=>setForm(f=>({...f,type:e.target.value}))} options={TYPES}/></div><div style={{flex:1}}><FL ch="Instructor"/><FI value={form.instructor} onChange={e=>setForm(f=>({...f,instructor:e.target.value}))} placeholder="Optional"/></div></div><div style={{display:'flex',gap:10,marginTop:4}}><GhBtn ch="Cancel" onClick={()=>setModal(null)} style={{flex:1}}/><GBtn ch={sv?'Saving...':'Save Class'} onClick={save} style={{flex:2,opacity:sv?.6:1}} disabled={sv}/></div></div>}/>
   </>;
 }
@@ -352,10 +352,10 @@ function ProductsView({products,setProducts,members}){
     {products.length===0&&<div style={{textAlign:'center',color:'#2a2a2a',padding:'48px 0',fontFamily:F}}>No products yet.</div>}
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:10}}>
       {products.map(p=><div key={p.id} style={{background:CARD,border:`1px solid ${BL}`,borderRadius:5,padding:16}}>
-        <div style={{color:'#fff',fontSize:15,fontWeight:800,fontFamily:F,marginBottom:4}}>{p.name}</div>
+        <div style={{color:'#fff',fontSize:17,fontWeight:800,fontFamily:F,marginBottom:6}}>{p.name}</div>
         {p.description&&<div style={{color:'#555',fontSize:12,fontFamily:FB,marginBottom:10}}>{p.description}</div>}
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
-          <div style={{color:G,fontSize:22,fontWeight:800,fontFamily:F}}>{fmtPrice(p.price_cents)}</div>
+          <div style={{color:G,fontSize:26,fontWeight:800,fontFamily:F}}>{fmtPrice(p.price_cents)}</div>
           <div style={{color:'#444',fontSize:11,fontFamily:F}}>{p.inventory!=null?`${p.inventory} in stock`:'Unlimited'}</div>
         </div>
         <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
@@ -445,11 +445,11 @@ export default function AdminApp({initialMembers,initialSchedule,initialProducts
     <div style={{height:3,background:G}}/>
     <div style={{background:BG,borderBottom:`1px solid ${BL}`,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 16px',height:58,position:'sticky',top:0,zIndex:40,flexWrap:'wrap',gap:8}}>
       <Logo/>
-      <div style={{display:'flex',gap:3,flexWrap:'wrap'}}>{navs.map(n=><button key={n.id} onClick={()=>setView(n.id)} style={{padding:'6px 10px',background:view===n.id?G:'transparent',border:view===n.id?'none':`1px solid ${BL}`,borderRadius:3,color:view===n.id?'#000':'#555',fontSize:10,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>{n.l}</button>)}</div>
+      <div style={{display:'flex',gap:3,flexWrap:'wrap'}}>{navs.map(n=><button key={n.id} onClick={()=>setView(n.id)} style={{padding:'8px 14px',background:view===n.id?G:'transparent',border:view===n.id?'none':`1px solid ${BL}`,borderRadius:3,color:view===n.id?'#000':'#555',fontSize:10,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>{n.l}</button>)}</div>
       <div style={{fontSize:9,color:'#444',fontFamily:F,letterSpacing:1,textTransform:'uppercase'}}>Admin</div>
     </div>
-    <div style={{display:'flex',borderBottom:`1px solid ${BL}`,overflowX:'auto'}}>{stats.map((s,i)=><div key={s.l} style={{flex:'1 0 70px',padding:'10px 14px',borderRight:i<3?`1px solid ${BL}`:'none'}}><div style={{color:'#2e2800',fontSize:9,textTransform:'uppercase',letterSpacing:1.5,fontWeight:800,fontFamily:F}}>{s.l}</div><div style={{color:s.c,fontSize:22,fontWeight:800,fontFamily:F,letterSpacing:-.5,marginTop:2}}>{s.v}</div></div>)}</div>
-    <div style={{padding:'16px'}}>
+    <div style={{display:'flex',borderBottom:`1px solid ${BL}`,overflowX:'auto'}}>{stats.map((s,i)=><div key={s.l} style={{flex:'1 0 70px',padding:'10px 14px',borderRight:i<3?`1px solid ${BL}`:'none'}}><div style={{color:'#2e2800',fontSize:10,textTransform:'uppercase',letterSpacing:1.5,fontWeight:800,fontFamily:F}}>{s.l}</div><div style={{color:s.c,fontSize:28,fontWeight:800,fontFamily:F,letterSpacing:-.5,marginTop:2}}>{s.v}</div></div>)}</div>
+    <div style={{padding:'20px'}}>
       {view==='roster'&&<RosterView members={members} setMembers={setMembers} openDetail={setDetailId}/>}
       {view==='payments'&&<PaymentsView members={members} setMembers={setMembers}/>}
       {view==='schedule'&&<ScheduleView schedule={schedule} setSchedule={setSchedule}/>}

@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 const G='#c9a227',GD='#8a6e18',BG='#060606',CARD='#0d0d0b',BL='#2e2600',ORG='#c97316';
 const F="'Barlow Condensed','Arial Narrow',Arial,sans-serif";
 const FB="'Barlow','Arial Narrow',Arial,sans-serif";
-const inp={width:'100%',background:'#111',border:`1px solid ${BL}`,borderRadius:3,padding:'11px 14px',color:'#fff',fontSize:15,outline:'none',fontFamily:FB,boxSizing:'border-box',WebkitAppearance:'none',colorScheme:'dark'};
+const inp={width:'100%',background:'#111',border:`1px solid ${BL}`,borderRadius:4,padding:'13px 16px',color:'#fff',fontSize:16,outline:'none',fontFamily:FB,boxSizing:'border-box',WebkitAppearance:'none',colorScheme:'dark'};
 const ADULT_BELTS=['White','Blue','Purple','Brown','Black'];
 const KIDS_BELTS=['White','Grey','Yellow','Orange','Green'];
 const HEARD=['','Friend/Family','Social Media','Google Search','Drove By','Other'];
@@ -221,7 +221,7 @@ export default function SignupPage(){
                 </div>
               </>}
 
-              <button onClick={go2} style={{width:'100%',padding:'13px',background:G,border:'none',borderRadius:3,color:'#000',fontWeight:800,fontSize:14,fontFamily:F,letterSpacing:1.5,textTransform:'uppercase',cursor:'pointer',marginTop:20}}>
+              <button onClick={go2} style={{width:'100%',padding:'15px',background:G,border:'none',borderRadius:4,color:'#000',fontWeight:800,fontSize:16,fontFamily:F,letterSpacing:1.5,textTransform:'uppercase',cursor:'pointer',marginTop:20}}>
                 Continue to Waiver →
               </button>
               <div style={{textAlign:'center',color:'#444',fontSize:13,marginTop:14}}>Already have an account? <a href="/login" style={{color:G,textDecoration:'none',fontWeight:700}}>Sign in</a></div>
