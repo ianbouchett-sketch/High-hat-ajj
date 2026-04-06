@@ -112,6 +112,14 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
   const [editForm,setEditForm]=useState({phone:'',home_phone:'',parent_name:'',address_line1:'',address_line2:'',city:'',state:'',zip:'',emergency_contact:'',avatar_color:''});
   const [expandedId,setExpandedId]=useState(null);
   const [saving,setSaving]=useState(false);
+  const [showPendingModal,setShowPendingModal]=useState(false);
+
+  // Show pending payment popup on first load if status is pending
+  useEffect(()=>{
+    if(initialMember?.status==='pending'&&initialMember?.stripe_checkout_session){
+      setShowPendingModal(true);
+    }
+  },[]);
   const [community,setCommunity]=useState({topTrainers:[],recentPromos:[],loaded:false});
   const [likes,setLikes]=useState({}); // promoId -> {count, liked}
   const [attendance,setAttendance]=useState({}); // scheduleId -> [memberNames]
@@ -282,14 +290,26 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
 
         {/* Stats */}
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:14}}>
-          {[{l:'Sessions',v:cnt,c:G},{l:'Streak',v:`${streak}d`,c:GRN},{l:'Status',v:isOD?'Overdue':'Paid Up',c:isOD?ORG:GRN}].map(s=><div key={s.l} style={{background:CARD,border:`1px solid ${BL}`,borderRadius:10,padding:'14px 10px',textAlign:'center'}}>
+          {[{l:'Sessions',v:cnt,c:G},{l:'Streak',v:`${streak}d`,c:GRN},{l:'Status',v:member.status==='pending'?'Pending':isOD?'Overdue':'Paid Up',c:member.status==='pending'?BLUE:isOD?ORG:GRN}].map(s=><div key={s.l} style={{background:CARD,border:`1px solid ${BL}`,borderRadius:10,padding:'14px 10px',textAlign:'center'}}>
             <div style={{color:'#444',fontSize:10,textTransform:'uppercase',letterSpacing:1.5,fontWeight:700,fontFamily:F}}>{s.l}</div>
             <div style={{color:s.c,fontSize:28,fontWeight:900,fontFamily:FN,marginTop:5,lineHeight:1}}>{s.v}</div>
           </div>)}
         </div>
 
         {/* Next payment */}
-        <Card><div style={{padding:'16px 18px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        {/* Pending payment banner */}
+        {member.status==='pending'&&<div style={{background:'#0a1020',border:`1px solid ${BLUE}40`,borderRadius:10,padding:'16px 18px',marginBottom:14}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}>
+            <div>
+              <div style={{color:BLUE,fontSize:13,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',marginBottom:4}}>Membership Pending</div>
+              <div style={{color:'#888',fontSize:13,fontFamily:FB,lineHeight:1.5}}>Your account is set up. Complete payment to activate your membership.</div>
+            </div>
+            {member.stripe_checkout_session&&<button onClick={()=>setShowPendingModal(true)} style={{padding:'10px 18px',background:BLUE,border:'none',borderRadius:6,color:'#fff',fontSize:13,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',flexShrink:0}}>Complete Payment</button>}
+            {!member.stripe_checkout_session&&<div style={{color:'#555',fontSize:12,fontFamily:FB}}>Contact your instructor for a payment link.</div>}
+          </div>
+        </div>}
+
+        {member.status!=='pending'&&<Card><div style={{padding:'16px 18px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <div>
             <div style={{color:'#444',fontSize:11,textTransform:'uppercase',letterSpacing:1.5,fontWeight:700,fontFamily:F}}>Next Payment</div>
             <div style={{color:isOD?ORG:'#fff',fontSize:18,fontWeight:700,fontFamily:FB,marginTop:4}}>{member.next_payment_date?fmtM(member.next_payment_date):'—'}</div>
@@ -298,7 +318,7 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
             <div style={{width:8,height:8,borderRadius:'50%',background:isOD?ORG:GRN,boxShadow:isOD?`0 0 8px ${ORG}60`:`0 0 8px ${GRN}60`}}/>
             <span style={{color:isOD?ORG:GRN,fontSize:13,fontWeight:800,fontFamily:F,letterSpacing:.5}}>{isOD?'Overdue':'Paid Up'}</span>
           </div>
-        </div></Card>
+        </div></Card>}
 
         {/* Milestone */}
         {next&&<Card><div style={{padding:'16px 18px'}}>
@@ -540,6 +560,24 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
       })}
     </div>
     <div style={{height:80}}/>
+
+    {/* Pending payment modal -- shown on login if payment link exists */}
+    {showPendingModal&&member.stripe_checkout_session&&<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.92)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
+      <div style={{background:'#0e0e0c',border:`1px solid ${BLUE}40`,borderRadius:16,width:'100%',maxWidth:400,padding:28}}>
+        <div style={{width:40,height:40,borderRadius:10,background:'#0a1020',border:`1px solid ${BLUE}40`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,marginBottom:16}}>🥋</div>
+        <div style={{fontWeight:800,fontSize:20,letterSpacing:1,color:'#fff',fontFamily:F,textTransform:'uppercase',marginBottom:8}}>Complete Your Membership</div>
+        <div style={{color:'#888',fontSize:14,fontFamily:FB,lineHeight:1.6,marginBottom:20}}>
+          Your account is created and your instructor has sent you a payment link. Complete your first payment to activate your membership and get full access.
+        </div>
+        <a href={`https://checkout.stripe.com/c/pay/${member.stripe_checkout_session}`} target="_blank" rel="noreferrer"
+          style={{display:'block',width:'100%',padding:'14px',background:G,border:'none',borderRadius:8,color:'#000',fontWeight:800,fontSize:15,fontFamily:F,letterSpacing:1.5,textTransform:'uppercase',cursor:'pointer',textDecoration:'none',textAlign:'center',boxSizing:'border-box',marginBottom:10}}>
+          Complete Payment →
+        </a>
+        <button onClick={()=>setShowPendingModal(false)} style={{width:'100%',padding:'11px',background:'transparent',border:`1px solid ${BL}`,borderRadius:8,color:'#555',fontSize:12,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>
+          I'll do this later
+        </button>
+      </div>
+    </div>}
 
     <Modal open={showLog} onClose={()=>setShowLog(false)} title="Log Session">
       <div style={{display:'flex',flexDirection:'column',gap:14}}>

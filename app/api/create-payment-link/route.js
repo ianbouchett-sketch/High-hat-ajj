@@ -31,13 +31,12 @@ export async function POST(request) {
       mode: 'subscription',
       payment_method_types: ['card'],
       line_items: [{ price: price.id, quantity: 1 }],
-      // Pre-fill their email if we have it
       ...(memberEmail && { customer_email: memberEmail }),
-      // Store member ID so webhook can find them
       subscription_data: {
         metadata: { member_id: memberId },
       },
       metadata: { member_id: memberId },
+      expires_at: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60), // 30 days
       success_url: 'https://high-hat-ajj.vercel.app/portal?welcome=1',
       cancel_url: 'https://high-hat-ajj.vercel.app/portal',
     });
