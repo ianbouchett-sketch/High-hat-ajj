@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
 // ---- Design tokens -- Strava-inspired, High Hat black/gold ----
@@ -540,12 +540,14 @@ function ProductsView({products,setProducts,members}){
 function RecentPromotions(){
   const [promos,setPromos]=useState([]);
   const [loaded,setLoaded]=useState(false);
-  async function load(){const{data}=await supabase.from('promotions').select('*').order('promoted_at',{ascending:false}).limit(15);setPromos(data||[]);setLoaded(true);}
+  useEffect(()=>{
+    supabase.from('promotions').select('*').order('promoted_at',{ascending:false}).limit(15).then(({data})=>{setPromos(data||[]);setLoaded(true);});
+  },[]);
   const fmt=d=>new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
   const bc=b=>({White:'#e8e8e0',Grey:'#888',Yellow:'#c9a227',Orange:'#c97316',Green:'#2a6a2a',Blue:'#1a3a6e',Purple:'#3e1460',Brown:'#4a2000',Black:'#222'}[b]||'#444');
   const btx=b=>(['White','Yellow'].includes(b)?'#000':'#fff');
   const kids=b=>['Grey','Yellow','Orange','Green'].includes(b);
-  if(!loaded)return <div style={{background:CARD,border:`1px solid ${BL}`,borderRadius:10,padding:20,marginTop:14}}><button onClick={load} style={{width:'100%',padding:'12px',background:'transparent',border:`1px solid ${BL}`,borderRadius:6,color:GD,fontSize:12,fontFamily:F,letterSpacing:1.5,textTransform:'uppercase',cursor:'pointer'}}>Load Recent Promotions</button></div>;
+  if(!loaded)return <div style={{background:CARD,border:`1px solid ${BL}`,borderRadius:10,padding:20,marginTop:14,color:'#333',fontSize:14,fontFamily:FB}}>Loading promotions...</div>;
   return <div style={{background:CARD,border:`1px solid ${BL}`,borderRadius:10,padding:20,marginTop:14}}>
     <SLabel ch="Recent Promotions"/>
     {promos.length===0&&<div style={{color:'#333',fontSize:14,fontFamily:FB}}>No promotions logged yet.</div>}
