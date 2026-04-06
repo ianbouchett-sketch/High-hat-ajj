@@ -6,12 +6,12 @@ export async function GET() {
     process.env.SUPABASE_SERVICE_ROLE_KEY
   );
 
-  const [{ data: trainers }, { data: promos }] = await Promise.all([
+  const [{ data: trainers, error: tErr }, { data: promos, error: pErr }] = await Promise.all([
     supabase
       .from('members')
       .select('id, name, belt, stripes, sessions')
-      .in('status', ['active', 'pending'])
-      .order('sessions', { ascending: false })
+      .neq('status', 'inactive')
+      .order('sessions', { ascending: false, nullsFirst: false })
       .limit(10),
     supabase
       .from('promotions')
@@ -20,5 +20,14 @@ export async function GET() {
       .limit(8),
   ]);
 
-  return Response.json({ trainers: trainers || [], promos: promos || [] });
+  if (tErr) console.error('trainers error:', tErr);
+  if (pErr) console.error('promos error:', pErr);
+
+  // Normalize sessions to 0 if null
+  const normalizedTrainers = (trainers || []).map(t => ({
+    ...t,
+    sessions: t.sessions || 0,
+  }));
+
+  return Response.json({ trainers: normalizedTrainers, promos: promos || [] });
 }

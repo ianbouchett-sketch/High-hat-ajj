@@ -240,16 +240,18 @@ function DetailModal({id,members,setMembers,onClose}){
   }
   async function confirmLogSession(){
     setSv(true);
-    const n=(m.sessions||0)+1;
-    // Use service role via admin page -- direct insert
-    const{error}=await supabase.from('sessions').insert({member_id:id,session_date:logSessionDate});
-    if(!error){
-      await supabase.from('members').update({sessions:n}).eq('id',id);
+    const res=await fetch('/api/log-session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({memberId:id,sessionDate:logSessionDate})});
+    const data=await res.json();
+    if(res.status===409){alert('A session is already logged for that date.');setSv(false);return;}
+    if(data.session){
+      // Increment count locally
+      const n=(m.sessions||0)+1;
       setMembers(ms=>ms.map(x=>x.id===id?{...x,sessions:n}:x));
+      setShowLogSession(false);
     } else {
-      alert('Error logging session: '+error.message);
+      alert('Error: '+(data.error||'Could not save session'));
     }
-    setSv(false);setShowLogSession(false);
+    setSv(false);
   }
   async function setStat(s){
     setSv(true);const u={status:s};if(s==='active')u.last_payment=todayStr();
@@ -466,8 +468,30 @@ function ScheduleView({schedule,setSchedule}){
   const [form,setForm]=useState({day_of_week:1,start_time:'18:30',class_name:'',type:'Gi',instructor:''});
   const [sv,setSv]=useState(false);
   async function openEdit(c){setModal(c?c.id:'new');setForm(c?{day_of_week:c.day_of_week,start_time:c.start_time,class_name:c.class_name,type:c.type,instructor:c.instructor||''}:{day_of_week:1,start_time:'18:30',class_name:'',type:'Gi',instructor:''});}
-  async function save(){if(!form.class_name.trim())return;setSv(true);if(modal==='new'){const{data}=await supabase.from('schedule').insert({...form,day_of_week:+form.day_of_week,active:true}).select().single();if(data)setSchedule(s=>[...s,data].sort((a,b)=>a.day_of_week-b.day_of_week||a.start_time.localeCompare(b.start_time)));}else{await supabase.from('schedule').update({...form,day_of_week:+form.day_of_week}).eq('id',modal);setSchedule(s=>s.map(c=>c.id===modal?{...c,...form,day_of_week:+form.day_of_week}:c));}setSv(false);setModal(null);}
-  async function del(id){await supabase.from('schedule').update({active:false}).eq('id',id);setSchedule(s=>s.filter(c=>c.id!==id));}
+  async function save(){
+    if(!form.class_name.trim())return;
+    setSv(true);
+    const payload={...form,day_of_week:+form.day_of_week};
+    if(modal==='new'){
+      const res=await fetch('/api/schedule',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      const d=await res.json();
+      if(d.class)setSchedule(s=>[...s,d.class].sort((a,b)=>a.day_of_week-b.day_of_week||a.start_time.localeCompare(b.start_time)));
+      else alert('Error saving class: '+(d.error||'Unknown error'));
+    } else {
+      const res=await fetch('/api/schedule',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:modal,...payload})});
+      const d=await res.json();
+      if(d.success)setSchedule(s=>s.map(c=>c.id===modal?{...c,...payload}:c));
+      else alert('Error updating class: '+(d.error||'Unknown error'));
+    }
+    setSv(false);setModal(null);
+  }
+  async function del(id,name){
+    if(!window.confirm(`Remove "${name}" from the schedule?`))return;
+    const res=await fetch('/api/schedule',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
+    const d=await res.json();
+    if(d.success)setSchedule(s=>s.filter(c=>c.id!==id));
+    else alert('Error removing class: '+(d.error||'Unknown error'));
+  }
   const sorted=[...schedule].sort((a,b)=>a.day_of_week-b.day_of_week||a.start_time.localeCompare(b.start_time));
   return <>
     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18,gap:10,flexWrap:'wrap'}}>
@@ -494,7 +518,7 @@ function ScheduleView({schedule,setSchedule}){
               {c.instructor&&<span style={{color:'#555',fontSize:13,fontFamily:FB}}>{c.instructor}</span>}
               <div style={{marginLeft:'auto',display:'flex',gap:5}}>
                 <button onClick={()=>openEdit(c)} style={{padding:'4px 10px',background:'transparent',border:`1px solid ${BL}`,borderRadius:4,color:'#555',fontSize:10,fontFamily:F,cursor:'pointer'}}>Edit</button>
-                <button onClick={()=>del(c.id)} style={{padding:'4px 10px',background:'transparent',border:'1px solid #4a1000',borderRadius:4,color:'#7a2a00',fontSize:10,fontFamily:F,cursor:'pointer'}}>×</button>
+                <button onClick={()=>del(c.id,c.class_name)} style={{padding:'4px 10px',background:'transparent',border:'1px solid #4a1000',borderRadius:4,color:'#7a2a00',fontSize:10,fontFamily:F,cursor:'pointer'}}>×</button>
               </div>
             </div>)}
           </div>
@@ -508,7 +532,7 @@ function ScheduleView({schedule,setSchedule}){
       {c.instructor&&<span style={{color:'#555',fontSize:13,fontFamily:FB}}>{c.instructor}</span>}
       <div style={{marginLeft:'auto',display:'flex',gap:5}}>
         <button onClick={()=>openEdit(c)} style={{padding:'4px 10px',background:'transparent',border:`1px solid ${BL}`,borderRadius:4,color:'#555',fontSize:10,fontFamily:F,cursor:'pointer'}}>Edit</button>
-        <button onClick={()=>del(c.id)} style={{padding:'4px 10px',background:'transparent',border:'1px solid #4a1000',borderRadius:4,color:'#7a2a00',fontSize:10,fontFamily:F,cursor:'pointer'}}>×</button>
+        <button onClick={()=>del(c.id,c.class_name)} style={{padding:'4px 10px',background:'transparent',border:'1px solid #4a1000',borderRadius:4,color:'#7a2a00',fontSize:10,fontFamily:F,cursor:'pointer'}}>×</button>
       </div>
     </div>)}
     <Modal open={modal!==null} onClose={()=>setModal(null)} title={modal==='new'?'Add Class':'Edit Class'} ch={<div style={{display:'flex',flexDirection:'column',gap:14}}>
