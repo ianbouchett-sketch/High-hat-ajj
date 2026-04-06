@@ -208,9 +208,16 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
   async function logSession(){
     if(sessions.find(s=>s.session_date===logDate)){showT('Already logged for that date.');setShowLog(false);return;}
     setSaving(true);
-    const{data}=await supabase.from('sessions').insert({member_id:member.id,session_date:logDate,note:logNote}).select().single();
-    if(data)setSessions(s=>[data,...s]);
-    setLogNote('');setShowLog(false);setSaving(false);showT('Session logged!');
+    const res=await fetch('/api/log-session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({memberId:member.id,sessionDate:logDate,note:logNote})});
+    const data=await res.json();
+    if(res.status===409){showT('Already logged for that date.');setShowLog(false);setSaving(false);return;}
+    if(data.session){
+      setSessions(s=>[data.session,...s]);
+      showT('Session logged!');
+    } else {
+      showT('Error: '+(data.error||'Could not save session'));
+    }
+    setLogNote('');setShowLog(false);setSaving(false);
   }
   function openEdit(){setEditForm({phone:member.phone||'',home_phone:member.home_phone||'',parent_name:member.parent_name||'',address_line1:member.address_line1||'',address_line2:member.address_line2||'',city:member.city||'',state:member.state||'',zip:member.zip||'',emergency_contact:member.emergency_contact||'',avatar_color:member.avatar_color||'#3e1460'});setShowEdit(true);}
   async function saveProfile(){

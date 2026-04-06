@@ -184,6 +184,8 @@ function DetailModal({id,members,setMembers,onClose}){
   const [generatedLink,setGeneratedLink]=useState(null);
   const [genLoading,setGenLoading]=useState(false);
   const [showLink,setShowLink]=useState(false);
+  const [showLogSession,setShowLogSession]=useState(false);
+  const [logSessionDate,setLogSessionDate]=useState('');
   const [showEditInfo,setShowEditInfo]=useState(false);
   const [editName,setEditName]=useState(m?.name||'');
   const [editPhone,setEditPhone]=useState(m?.phone||'');
@@ -232,7 +234,23 @@ function DetailModal({id,members,setMembers,onClose}){
     setMembers(ms=>ms.map(x=>x.id===id?{...x,belt,stripes:isKidsBelt(belt)?0:stripes}:x));
     setSv(false);
   }
-  async function logSess(){setSv(true);const n=(m.sessions||0)+1;await supabase.from('members').update({sessions:n}).eq('id',id);await supabase.from('sessions').insert({member_id:id,session_date:todayStr()});setMembers(ms=>ms.map(x=>x.id===id?{...x,sessions:n}:x));setSv(false);}
+  function openLogSession(){
+    setLogSessionDate(todayStr());
+    setShowLogSession(true);
+  }
+  async function confirmLogSession(){
+    setSv(true);
+    const n=(m.sessions||0)+1;
+    // Use service role via admin page -- direct insert
+    const{error}=await supabase.from('sessions').insert({member_id:id,session_date:logSessionDate});
+    if(!error){
+      await supabase.from('members').update({sessions:n}).eq('id',id);
+      setMembers(ms=>ms.map(x=>x.id===id?{...x,sessions:n}:x));
+    } else {
+      alert('Error logging session: '+error.message);
+    }
+    setSv(false);setShowLogSession(false);
+  }
   async function setStat(s){
     setSv(true);const u={status:s};if(s==='active')u.last_payment=todayStr();
     await supabase.from('members').update(u).eq('id',id);
@@ -361,7 +379,7 @@ function DetailModal({id,members,setMembers,onClose}){
 
     {/* Actions */}
     <div style={{display:'flex',gap:8,marginBottom:10,flexWrap:'wrap'}}>
-      <button onClick={logSess} disabled={sv} style={{flex:'1 1 120px',padding:14,background:'#0a1a0a',border:`1px solid #2a6a2a`,borderRadius:8,color:GRN,fontSize:13,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>+ Session</button>
+      <button onClick={openLogSession} disabled={sv} style={{flex:'1 1 120px',padding:14,background:'#0a1a0a',border:`1px solid #2a6a2a`,borderRadius:8,color:GRN,fontSize:13,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>+ Session</button>
       {m.status!=='active'?<button onClick={()=>setStat('active')} disabled={sv} style={{flex:'1 1 120px',padding:14,background:'#0a1a0a',border:`1px solid #2a6a2a`,borderRadius:8,color:GRN,fontSize:13,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>Mark Active</button>
       :<button onClick={()=>setStat('inactive')} disabled={sv} style={{flex:'1 1 120px',padding:14,background:SURF,border:`1px solid ${BL}`,borderRadius:8,color:'#555',fontSize:13,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>Deactivate</button>}
     </div>
@@ -387,6 +405,18 @@ function DetailModal({id,members,setMembers,onClose}){
     {conf&&<div style={{background:'#1a0808',border:'1px solid #6a2020',borderRadius:8,padding:'14px',marginBottom:8}}>
       <div style={{color:RED,fontSize:14,fontFamily:FB,marginBottom:12}}>This cancels the Stripe subscription immediately. Cannot be undone.</div>
       <div style={{display:'flex',gap:8}}><GhBtn ch="Keep It" onClick={()=>setConf(false)} style={{flex:1}}/><DBtn ch={cancelling?'Cancelling...':'Yes, Cancel'} onClick={cancelSub} style={{flex:1}} disabled={cancelling}/></div>
+    </div>}
+
+    {showLogSession&&<div style={{background:'#0a1a0a',border:'1px solid #2a6a2a',borderRadius:10,padding:'16px',marginBottom:10}}>
+      <div style={{color:GRN,fontSize:13,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',marginBottom:12}}>Log Session for {m.name}</div>
+      <div style={{marginBottom:12}}>
+        <FL ch="Session Date"/>
+        <input type="date" value={logSessionDate} max={todayStr()} onChange={e=>setLogSessionDate(e.target.value)} style={{...inpStyle,fontSize:15,padding:'10px 14px'}}/>
+      </div>
+      <div style={{display:'flex',gap:8}}>
+        <GhBtn ch="Cancel" onClick={()=>setShowLogSession(false)} style={{flex:1}}/>
+        <button onClick={confirmLogSession} disabled={sv} style={{flex:2,padding:'11px',background:'#1a4a1a',border:'1px solid #2a6a2a',borderRadius:6,color:GRN,fontSize:13,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',opacity:sv?.6:1}}>{sv?'Saving...':'Confirm Session'}</button>
+      </div>
     </div>}
 
     <div style={{display:'flex',gap:8,marginTop:4}}>
