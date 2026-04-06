@@ -149,7 +149,22 @@ function DetailModal({id,members,setMembers,onClose}){
   }
   if(!m)return null;
   const od=m.status==='overdue'&&m.last_payment?dOD(m.last_payment):0;
-  async function saveBelt(){setSv(true);await supabase.from('members').update({belt,stripes}).eq('id',id);setMembers(ms=>ms.map(x=>x.id===id?{...x,belt,stripes}:x));setSv(false);}
+  async function saveBelt(){
+    setSv(true);
+    const oldBelt=m.belt,oldStripes=m.stripes;
+    await supabase.from('members').update({belt,stripes}).eq('id',id);
+    // Log promotion if rank changed
+    if(belt!==oldBelt||stripes!==oldStripes){
+      await supabase.from('promotions').insert({
+        member_id:id,member_name:m.name,
+        old_belt:oldBelt,old_stripes:oldStripes,
+        new_belt:belt,new_stripes:stripes,
+        promoted_by:'admin',
+      });
+    }
+    setMembers(ms=>ms.map(x=>x.id===id?{...x,belt,stripes}:x));
+    setSv(false);
+  }
   async function logSess(){setSv(true);const n=(m.sessions||0)+1;await supabase.from('members').update({sessions:n}).eq('id',id);await supabase.from('sessions').insert({member_id:id,session_date:todayStr()});setMembers(ms=>ms.map(x=>x.id===id?{...x,sessions:n}:x));setSv(false);}
   async function setStat(s){
     setSv(true);
@@ -378,7 +393,44 @@ function AnalyticsView({members}){
       <div style={cs}><SLabel ch="Top Trainers"/>{top.map((m,i)=><div key={m.id} style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}><div style={{color:'#1e1a00',fontWeight:800,fontSize:18,fontFamily:F,width:18,textAlign:'center',flexShrink:0}}>{i+1}</div><div style={{flex:1,minWidth:0}}><div style={{color:'#fff',fontSize:13,fontWeight:700,fontFamily:F,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{m.name}</div><div style={{height:3,background:'#161600',borderRadius:1,marginTop:5}}><div style={{height:3,borderRadius:1,background:G,width:`${((m.sessions||0)/maxS)*100}%`}}/></div></div><div style={{color:G,fontWeight:800,fontSize:15,fontFamily:F,flexShrink:0}}>{m.sessions||0}</div></div>)}</div>
       <div style={cs}><SLabel ch="Belt Breakdown"/>{BELTS.map(b=>{const cnt=members.filter(m=>m.belt===b).length;if(!cnt)return null;const c=BELT_CFG[b];return <div key={b} style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}><BB belt={b} stripes={0}/><div style={{flex:1}}><div style={{height:5,background:'#111',borderRadius:2}}><div style={{height:5,borderRadius:2,background:c.bg==='#e8e8e0'?'#d0d0c8':c.bg,border:`1px solid ${c.br}`,width:`${(cnt/total)*100}%`}}/></div></div><div style={{color:'#fff',fontWeight:800,fontSize:15,fontFamily:F,width:20,textAlign:'right'}}>{cnt}</div></div>;})}</div>
     </div>
+    <RecentPromotions/>
   </>;
+}
+
+function RecentPromotions(){
+  const [promos,setPromos]=useState([]);
+  const [loaded,setLoaded]=useState(false);
+  async function load(){const{data}=await supabase.from('promotions').select('*').order('promoted_at',{ascending:false}).limit(15);setPromos(data||[]);setLoaded(true);}
+  const fmt=d=>new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const bc=b=>({White:'#e8e8e0',Grey:'#888',Yellow:'#c9a227',Orange:'#c97316',Green:'#2a6a2a',Blue:'#1a3a6e',Purple:'#3e1460',Brown:'#4a2000',Black:'#222'}[b]||'#444');
+  const btx=b=>(['White','Yellow'].includes(b)?'#000':'#fff');
+  const isKids=b=>['Grey','Yellow','Orange','Green'].includes(b);
+  if(!loaded)return(
+    <div style={{background:CARD,border:`1px solid ${BL}`,borderRadius:5,padding:20,marginTop:14}}>
+      <button onClick={load} style={{width:'100%',padding:'10px',background:'transparent',border:`1px solid ${BL}`,borderRadius:3,color:GD,fontSize:11,fontFamily:F,letterSpacing:1.5,textTransform:'uppercase',cursor:'pointer'}}>Load Recent Promotions</button>
+    </div>
+  );
+  return(
+    <div style={{background:CARD,border:`1px solid ${BL}`,borderRadius:5,padding:20,marginTop:14}}>
+      <SLabel ch="Recent Promotions"/>
+      {promos.length===0&&<div style={{color:'#2a2a2a',fontSize:13,fontFamily:F}}>No promotions logged yet.</div>}
+      {promos.map(p=>(
+        <div key={p.id} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 0',borderBottom:`1px solid ${BL}`}}>
+          <div style={{width:34,height:34,borderRadius:3,background:'#141400',border:`1.5px solid ${GD}`,display:'flex',alignItems:'center',justifyContent:'center',color:G,fontSize:11,fontWeight:800,fontFamily:F,flexShrink:0}}>{p.member_name?p.member_name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2):'?'}</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:'#fff',fontSize:13,fontWeight:700,fontFamily:F,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{p.member_name}</div>
+            <div style={{display:'flex',alignItems:'center',gap:6,marginTop:4,flexWrap:'wrap'}}>
+              <span style={{padding:'1px 6px',background:bc(p.old_belt),borderRadius:2,fontSize:9,fontWeight:800,fontFamily:F,color:btx(p.old_belt),letterSpacing:1,textTransform:'uppercase'}}>{p.old_belt}{!isKids(p.old_belt)&&p.old_stripes>0?` ${p.old_stripes}s`:''}</span>
+              <span style={{color:'#444',fontSize:12}}>→</span>
+              <span style={{padding:'1px 6px',background:bc(p.new_belt),borderRadius:2,fontSize:9,fontWeight:800,fontFamily:F,color:btx(p.new_belt),letterSpacing:1,textTransform:'uppercase'}}>{p.new_belt}{!isKids(p.new_belt)&&p.new_stripes>0?` ${p.new_stripes}s`:''}</span>
+              {p.promoted_by==='self'&&<span style={{color:'#3a7abd',fontSize:9,fontFamily:F,fontWeight:700,letterSpacing:1,textTransform:'uppercase'}}>self</span>}
+            </div>
+          </div>
+          <div style={{color:'#333',fontSize:11,fontFamily:F,flexShrink:0}}>{fmt(p.promoted_at)}</div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default function AdminApp({initialMembers,initialSchedule,initialProducts}){

@@ -74,6 +74,55 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
   const [expandedId,setExpandedId]=useState(null);
   const [saving,setSaving]=useState(false);
 
+  const [showPromo,setShowPromo]=useState(false);
+  const [promoConfirm,setPromoConfirm]=useState(false);
+  const [promoBelt,setPromoBelt]=useState('');
+  const [promoStripes,setPromoStripes]=useState(0);
+  const [promoSaving,setPromoSaving]=useState(false);
+
+  const ADULT_BELT_ORDER=['White','Blue','Purple','Brown','Black'];
+  const KIDS_BELT_ORDER=['White','Grey','Yellow','Orange','Green'];
+  const isKidsMember=member.date_of_birth?(()=>{const d=new Date(member.date_of_birth),now=new Date();let a=now.getFullYear()-d.getFullYear();if(now.getMonth()<d.getMonth()||(now.getMonth()===d.getMonth()&&now.getDate()<d.getDate()))a--;return a<16;})():false;
+  const beltOrder=isKidsMember?KIDS_BELT_ORDER:ADULT_BELT_ORDER;
+  const currentBeltIdx=beltOrder.indexOf(member.belt||'White');
+  const isKidsBelt=b=>['Grey','Yellow','Orange','Green'].includes(b);
+
+  // Allowed options: same belt any stripes, or one belt up 0 stripes
+  function getPromoOptions(){
+    const opts=[];
+    const curBelt=member.belt||'White';
+    const curIdx=beltOrder.indexOf(curBelt);
+    const kids=isKidsBelt(curBelt);
+    // Stripes on current belt
+    if(!kids){
+      [1,2,3,4].forEach(s=>{
+        if(s>=(member.stripes||0))opts.push({belt:curBelt,stripes:s,label:`${curBelt} Belt ${s} ${s===1?'Stripe':'Stripes'}`});
+      });
+    }
+    // One belt up
+    if(curIdx<beltOrder.length-1){
+      const nextBelt=beltOrder[curIdx+1];
+      opts.push({belt:nextBelt,stripes:0,label:`${nextBelt} Belt`});
+    }
+    return opts;
+  }
+
+  async function confirmPromotion(){
+    if(!promoBelt)return;
+    setPromoSaving(true);
+    const oldBelt=member.belt,oldStripes=member.stripes||0;
+    await supabase.from('members').update({belt:promoBelt,stripes:promoStripes}).eq('id',member.id);
+    await supabase.from('promotions').insert({
+      member_id:member.id,member_name:member.name,
+      old_belt:oldBelt,old_stripes:oldStripes,
+      new_belt:promoBelt,new_stripes:promoStripes,
+      promoted_by:'self',
+    });
+    setMember(m=>({...m,belt:promoBelt,stripes:promoStripes}));
+    setPromoSaving(false);setPromoConfirm(false);setShowPromo(false);
+    showT('Rank updated! Congrats!');
+  }
+
   const cnt=sessions.length,streak=computeStreak(sessions);
   const earned=MILES.filter(m=>cnt>=m.n),next=MILES.find(m=>cnt<m.n);
   const isOD=member.status==='overdue';
@@ -123,6 +172,39 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
             <BeltBar belt={member.belt||'White'} stripes={member.stripes||0}/>
           </div>
         </Card>
+        {/* Self-promotion button */}
+        {getPromoOptions().length>0&&!showPromo&&(
+          <button onClick={()=>setShowPromo(true)} style={{width:'100%',padding:'10px',background:'transparent',border:`1px solid ${BL}`,borderRadius:4,color:GD,fontSize:11,fontFamily:F,letterSpacing:1.5,textTransform:'uppercase',cursor:'pointer',marginBottom:10}}>Update My Rank</button>
+        )}
+        {showPromo&&!promoConfirm&&(
+          <div style={{background:CARD,border:`1px solid ${BL}`,borderRadius:5,padding:'16px',marginBottom:10}}>
+            <SLabel>Update My Rank</SLabel>
+            <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:12}}>
+              {getPromoOptions().map((opt,i)=>(
+                <div key={i} onClick={()=>{setPromoBelt(opt.belt);setPromoStripes(opt.stripes);}} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',background:promoBelt===opt.belt&&promoStripes===opt.stripes?'#1a1600':'#111',border:`1px solid ${promoBelt===opt.belt&&promoStripes===opt.stripes?G:BL}`,borderRadius:3,cursor:'pointer'}}>
+                  <div style={{width:10,height:10,borderRadius:'50%',border:`2px solid ${promoBelt===opt.belt&&promoStripes===opt.stripes?G:'#444'}`,background:promoBelt===opt.belt&&promoStripes===opt.stripes?G:'transparent',flexShrink:0}}/>
+                  <span style={{color:'#fff',fontSize:13,fontFamily:F,fontWeight:700}}>{opt.label}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{display:'flex',gap:8}}>
+              <button onClick={()=>{setShowPromo(false);setPromoBelt('');setPromoStripes(0);}} style={{flex:1,padding:'9px',background:'transparent',border:`1px solid ${BL}`,borderRadius:3,color:'#555',fontSize:11,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>Cancel</button>
+              <button onClick={()=>promoBelt&&setPromoConfirm(true)} disabled={!promoBelt} style={{flex:2,padding:'9px',background:G,border:'none',borderRadius:3,color:'#000',fontSize:12,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',opacity:promoBelt?1:0.4}}>Continue</button>
+            </div>
+          </div>
+        )}
+        {promoConfirm&&(
+          <div style={{background:'#0a1000',border:`1px solid ${G}`,borderRadius:5,padding:'16px',marginBottom:10}}>
+            <div style={{color:G,fontSize:14,fontWeight:800,fontFamily:F,letterSpacing:1,marginBottom:8}}>Confirm Rank Update</div>
+            <div style={{color:'#888',fontSize:13,fontFamily:FB,lineHeight:1.6,marginBottom:12}}>
+              You are updating your rank to <strong style={{color:'#fff'}}>{promoBelt} Belt{!isKidsBelt(promoBelt)&&promoStripes>0?` ${promoStripes} ${promoStripes===1?'Stripe':'Stripes'}`:''}</strong>. This will be visible to the whole academy. Are you sure?
+            </div>
+            <div style={{display:'flex',gap:8}}>
+              <button onClick={()=>setPromoConfirm(false)} style={{flex:1,padding:'9px',background:'transparent',border:`1px solid ${BL}`,borderRadius:3,color:'#555',fontSize:11,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>Go Back</button>
+              <button onClick={confirmPromotion} disabled={promoSaving} style={{flex:2,padding:'9px',background:G,border:'none',borderRadius:3,color:'#000',fontSize:12,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',opacity:promoSaving?.6:1}}>{promoSaving?'Saving...':'Yes, Update Rank'}</button>
+            </div>
+          </div>
+        )}
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:10}}>
           {[{l:'Sessions',v:cnt,c:G},{l:'Streak',v:`${streak}d`,c:GRN},{l:'Status',v:isOD?'Overdue':'Paid Up',c:isOD?ORG:GRN}].map(s=><div key={s.l} style={{background:CARD,border:`1px solid ${BL}`,borderRadius:4,padding:'12px 8px',textAlign:'center'}}><div style={{color:'#2e2800',fontSize:9,textTransform:'uppercase',letterSpacing:1.5,fontWeight:800,fontFamily:F}}>{s.l}</div><div style={{color:s.c,fontSize:24,fontWeight:800,fontFamily:F,marginTop:4}}>{s.v}</div></div>)}
         </div>
