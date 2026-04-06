@@ -139,14 +139,15 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
   useEffect(()=>{
     async function loadCommunity(){
       const weekStart=getWeekStart();
-      const[{data:trainers},{data:promos},{data:likeData},{data:attData},{data:myAtt}]=await Promise.all([
-        supabase.from('members').select('id,name,belt,stripes,sessions').eq('status','active').order('sessions',{ascending:false}).limit(10),
-        supabase.from('promotions').select('*').order('promoted_at',{ascending:false}).limit(8),
+      const[communityRes,{data:likeData},{data:attData},{data:myAtt}]=await Promise.all([
+        fetch('/api/community').then(r=>r.json()),
         supabase.from('promotion_likes').select('promotion_id,member_id'),
         supabase.from('attendance_plans').select('schedule_id,member_id,members(name)').eq('week_start',weekStart),
         supabase.from('attendance_plans').select('schedule_id').eq('member_id',initialMember?.id||'').eq('week_start',weekStart),
       ]);
-      setCommunity({topTrainers:trainers||[],recentPromos:promos||[],loaded:true});
+      const trainers=communityRes.trainers||[];
+      const promos=communityRes.promos||[];
+      setCommunity({topTrainers:trainers,recentPromos:promos,loaded:true});
       // Build likes map
       const lMap={};
       (likeData||[]).forEach(l=>{
