@@ -5,13 +5,11 @@ import { supabase } from '@/lib/supabase';
 const G='#c9a227',GD='#8a6e18',GK='#1a1600',BG='#060606',CARD='#0d0d0b',BL='#2e2600',GRN='#4a9e4a',ORG='#c97316';
 const F="'Barlow Condensed','Arial Narrow',Arial,sans-serif";
 const FB="'Barlow','Arial Narrow',Arial,sans-serif";
-const BELT_CFG={White:{bg:'#e8e8e0',tx:'#111',br:'#bbb'},Blue:{bg:'#1a3a6e',tx:'#fff',br:'#2a5aae'},Purple:{bg:'#3e1460',tx:'#fff',br:'#6a2aaa'},Brown:{bg:'#4a2000',tx:'#fff',br:'#7a3e10'},Black:{bg:'#0a0a0a',tx:'#fff',br:'#3a3a3a'},Grey:{bg:'#888',tx:'#fff',br:'#aaa'},Yellow:{bg:'#c9a227',tx:'#000',br:'#a07800'},Orange:{bg:'#c97316',tx:'#fff',br:'#a05010'},Green:{bg:'#2a6a2a',tx:'#fff',br:'#1a4a1a'}};
+const BELT_CFG={White:{bg:'#e8e8e0',tx:'#111',br:'#bbb'},Blue:{bg:'#1a3a6e',tx:'#fff',br:'#2a5aae'},Purple:{bg:'#3e1460',tx:'#fff',br:'#6a2aaa'},Brown:{bg:'#4a2000',tx:'#fff',br:'#7a3e10'},Black:{bg:'#0a0a0a',tx:'#fff',br:'#3a3a3a'}};
 const TYPE_CFG={'Gi':{bg:'#1a3a6e',br:'#2a5aae'},'No-Gi':{bg:'#4a1a1a',br:'#8a2a2a'},Wrestling:{bg:'#1a3a1a',br:'#2a6a2a'},Judo:{bg:'#3a1a00',br:'#7a4a00'},'Open Mat':{bg:'#1a1a3a',br:'#3a3a8a'},Other:{bg:'#222',br:'#444'}};
 const DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const DAYSS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const BELTS=['White','Blue','Purple','Brown','Black','Grey','Yellow','Orange','Green'];
-const KIDS_BELTS=['Grey','Yellow','Orange','Green'];
-const isKidsBelt=b=>KIDS_BELTS.includes(b);
+const BELTS=['White','Blue','Purple','Brown','Black'];
 const TYPES=['Gi','No-Gi','Wrestling','Judo','Open Mat','Other'];
 const TODAY=new Date();
 const ini=n=>n?n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2):'?';
@@ -27,7 +25,7 @@ function Card({ch,style={}}){return <div style={{background:CARD,border:`1px sol
 function GBtn({ch,onClick,style={},small,disabled}){return <button onClick={onClick} disabled={disabled} style={{padding:small?'6px 14px':'9px 18px',background:G,border:'none',borderRadius:3,color:'#000',fontWeight:800,fontSize:small?11:13,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',opacity:disabled?.5:1,...style}}>{ch}</button>}
 function GhBtn({ch,onClick,style={}}){return <button onClick={onClick} style={{padding:'7px 14px',background:'transparent',border:`1px solid ${BL}`,borderRadius:3,color:'#555',fontSize:11,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',...style}}>{ch}</button>}
 function DBtn({ch,onClick,style={},disabled}){return <button onClick={onClick} disabled={disabled} style={{padding:'7px 14px',background:'transparent',border:'1px solid #7a2020',borderRadius:3,color:'#c94040',fontSize:11,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',opacity:disabled?.5:1,...style}}>{ch}</button>}
-function BB({belt,stripes,lg}){const c=BELT_CFG[belt]||BELT_CFG.White,sc=belt==='White'?'#111':'#fff';const kids=isKidsBelt(belt);const h=lg?22:16,w=kids?(lg?70:52):(lg?90:64),sw=lg?6:4;return <div style={{display:'inline-flex',alignItems:'center',justifyContent:'center',background:c.bg,border:`1.5px solid ${c.br}`,borderRadius:2,width:w,height:h,padding:'0 6px',flexShrink:0,gap:2}}><span style={{fontSize:lg?9:7,fontWeight:800,fontFamily:F,color:c.tx,letterSpacing:1,textTransform:'uppercase'}}>{belt}</span>{!kids&&<div style={{display:'flex',gap:2}}>{[0,1,2,3,4].map(i=><div key={i} style={{width:sw,height:h-4,borderRadius:1,background:i<stripes?sc:'transparent',border:`1px solid ${i<stripes?sc:(belt==='White'?'#aaa':c.br)}`,opacity:i<stripes?1:0.3}}/>)}</div>}</div>}
+function BB({belt,stripes,lg}){const c=BELT_CFG[belt]||BELT_CFG.White,sc=belt==='White'?'#111':'#fff';const h=lg?22:16,w=lg?90:64,sw=lg?6:4;return <div style={{display:'inline-flex',alignItems:'center',justifyContent:'space-between',background:c.bg,border:`1.5px solid ${c.br}`,borderRadius:2,width:w,height:h,padding:'0 4px',flexShrink:0,gap:2}}><span style={{fontSize:lg?9:7,fontWeight:800,fontFamily:F,color:c.tx,letterSpacing:1,textTransform:'uppercase'}}>{belt}</span><div style={{display:'flex',gap:2}}>{[0,1,2,3,4].map(i=><div key={i} style={{width:sw,height:h-4,borderRadius:1,background:i<stripes?sc:'transparent',border:`1px solid ${i<stripes?sc:(belt==='White'?'#aaa':c.br)}`,opacity:i<stripes?1:0.3}}/>)}</div></div>}
 function SDot({status}){return <span style={{display:'inline-block',width:7,height:7,borderRadius:'50%',background:{active:GRN,overdue:ORG,inactive:'#444',pending:'#3a7abd'}[status]||'#444',flexShrink:0}}/>}
 function TPill({type}){const c=TYPE_CFG[type]||TYPE_CFG.Other;return <span style={{padding:'2px 7px',background:c.bg,border:`1px solid ${c.br}`,borderRadius:2,fontSize:9,fontWeight:800,fontFamily:F,color:'#fff',letterSpacing:1,textTransform:'uppercase'}}>{type}</span>}
 function FL({ch}){return <div style={{color:GD,fontSize:10,letterSpacing:1.5,textTransform:'uppercase',marginBottom:6,fontWeight:800,fontFamily:F}}>{ch}</div>}
@@ -98,7 +96,7 @@ function RosterView({members,setMembers,openDetail}){
         <div><FL ch="Email"/><FI value={form.email} onChange={e=>setForm(f=>({...f,email:e.target.value}))} placeholder="member@example.com" type="email"/></div>
         <div style={{display:'flex',gap:12}}>
           <div style={{flex:1}}><FL ch="Belt"/><FS value={form.belt} onChange={e=>setForm(f=>({...f,belt:e.target.value}))} options={BELTS}/></div>
-          {!isKidsBelt(form.belt)&&<div style={{flex:1}}><FL ch="Stripes"/><FS value={form.stripes} onChange={e=>setForm(f=>({...f,stripes:+e.target.value}))} options={[0,1,2,3,4].map(n=>({v:n,l:n}))}/></div>}
+          <div style={{flex:1}}><FL ch="Stripes"/><FS value={form.stripes} onChange={e=>setForm(f=>({...f,stripes:+e.target.value}))} options={[0,1,2,3,4].map(n=>({v:n,l:n}))}/></div>
         </div>
         <div style={{display:'flex',gap:10,marginTop:4}}>
           <GhBtn ch="Cancel" onClick={()=>setAdd(false)} style={{flex:1}}/>
@@ -233,8 +231,8 @@ function DetailModal({id,members,setMembers,onClose}){
     <div style={{background:'#111',border:`1px solid ${BL}`,borderRadius:4,padding:'14px 16px',marginBottom:12}}>
       <SLabel ch="Update Belt"/>
       <div style={{display:'flex',gap:8,alignItems:'center'}}>
-        <div style={{flex:1}}><FS value={belt} onChange={e=>{setBelt(e.target.value);if(isKidsBelt(e.target.value))setStr(0);}} options={BELTS}/></div>
-        {!isKidsBelt(belt)&&<div style={{width:78}}><FS value={stripes} onChange={e=>setStr(+e.target.value)} options={[0,1,2,3,4].map(n=>({v:n,l:n}))}/></div>}
+        <div style={{flex:1}}><FS value={belt} onChange={e=>setBelt(e.target.value)} options={BELTS}/></div>
+        <div style={{width:78}}><FS value={stripes} onChange={e=>setStr(+e.target.value)} options={[0,1,2,3,4].map(n=>({v:n,l:n}))}/></div>
         <GBtn ch="Save" onClick={saveBelt} small disabled={sv}/>
       </div>
     </div>
