@@ -150,11 +150,36 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
     setLogNote('');setShowLog(false);setSaving(false);showT('Session logged.');
   }
 
-  function openEdit(){setEditForm({phone:member.phone||'',address:member.address||'',emergency_contact:member.emergency_contact||'',avatar_color:member.avatar_color||'#3e1460'});setShowEdit(true);}
+  function openEdit(){
+    setEditForm({
+      phone:member.phone||'',
+      home_phone:member.home_phone||'',
+      parent_name:member.parent_name||'',
+      address_line1:member.address_line1||'',
+      address_line2:member.address_line2||'',
+      city:member.city||'',
+      state:member.state||'',
+      zip:member.zip||'',
+      emergency_contact:member.emergency_contact||'',
+      avatar_color:member.avatar_color||'#3e1460',
+    });
+    setShowEdit(true);
+  }
 
   async function saveProfile(){
     setSaving(true);
-    await supabase.from('members').update({phone:editForm.phone,address:editForm.address,emergency_contact:editForm.emergency_contact,avatar_color:editForm.avatar_color}).eq('id',member.id);
+    await supabase.from('members').update({
+      phone:editForm.phone,
+      home_phone:editForm.home_phone,
+      parent_name:editForm.parent_name,
+      address_line1:editForm.address_line1,
+      address_line2:editForm.address_line2,
+      city:editForm.city,
+      state:editForm.state,
+      zip:editForm.zip,
+      emergency_contact:editForm.emergency_contact,
+      avatar_color:editForm.avatar_color,
+    }).eq('id',member.id);
     setMember(m=>({...m,...editForm}));
     setSaving(false);setShowEdit(false);showT('Profile updated.');
   }
@@ -325,6 +350,101 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
           <div style={{fontWeight:800,fontSize:22,letterSpacing:2,color:G,textTransform:'uppercase',fontFamily:F}}>My Profile</div>
           <GhBtn onClick={openEdit}>Edit</GhBtn>
         </div>
+
+        {/* Identity card */}
+        <Card><div style={{padding:'18px',display:'flex',alignItems:'flex-start',gap:14}}>
+          <div style={{width:52,height:52,borderRadius:3,background:member.avatar_color||'#3e1460',border:`2px solid ${G}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,fontWeight:800,color:G,fontFamily:F,letterSpacing:1.5,flexShrink:0}}>{ini(member.name)}</div>
+          <div style={{flex:1}}>
+            <div style={{color:'#fff',fontSize:17,fontWeight:800,fontFamily:F}}>{member.name}</div>
+            <div style={{color:'#444',fontSize:12,marginTop:2,fontFamily:FB}}>{member.email}</div>
+            {member.date_of_birth&&<div style={{color:'#444',fontSize:12,marginTop:2,fontFamily:FB}}>DOB: {new Date(member.date_of_birth).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</div>}
+            {member.gender&&member.gender!=='-- Select --'&&<div style={{color:'#444',fontSize:12,marginTop:2,fontFamily:FB}}>{member.gender}</div>}
+            <div style={{marginTop:10}}><BeltBar belt={member.belt||'White'} stripes={member.stripes||0}/></div>
+          </div>
+        </div></Card>
+
+        {/* Contact */}
+        <Card><div style={{padding:'14px 16px'}}>
+          <SLabel>Contact</SLabel>
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            {[
+              {i:'📱',l:'Cell Phone',v:member.phone},
+              {i:'🏠',l:'Home Phone',v:member.home_phone},
+              {i:'👨‍👩‍👧',l:'Parent / Guardian',v:member.parent_name},
+            ].map(f=>f.v&&<div key={f.l} style={{display:'flex',gap:10,alignItems:'flex-start'}}>
+              <span style={{fontSize:15,flexShrink:0,marginTop:1}}>{f.i}</span>
+              <div><div style={{color:'#2e2800',fontSize:9,textTransform:'uppercase',letterSpacing:1.5,fontWeight:800,fontFamily:F}}>{f.l}</div><div style={{color:'#fff',fontSize:14,marginTop:2,fontFamily:FB}}>{f.v}</div></div>
+            </div>)}
+          </div>
+        </div></Card>
+
+        {/* Address */}
+        {(member.address_line1||member.city)&&<Card><div style={{padding:'14px 16px'}}>
+          <SLabel>Address</SLabel>
+          <div style={{display:'flex',gap:10,alignItems:'flex-start'}}>
+            <span style={{fontSize:15,flexShrink:0,marginTop:1}}>📍</span>
+            <div style={{color:'#fff',fontSize:14,fontFamily:FB,lineHeight:1.6}}>
+              {member.address_line1&&<div>{member.address_line1}</div>}
+              {member.address_line2&&<div>{member.address_line2}</div>}
+              {(member.city||member.state||member.zip)&&<div>{[member.city,member.state,member.zip].filter(Boolean).join(', ')}</div>}
+            </div>
+          </div>
+        </div></Card>}
+
+        {/* Emergency contact */}
+        <Card><div style={{padding:'14px 16px'}}>
+          <SLabel>Emergency Contact</SLabel>
+          <div style={{display:'flex',gap:10,alignItems:'flex-start'}}>
+            <span style={{fontSize:15,flexShrink:0,marginTop:1}}>🚨</span>
+            <div><div style={{color:member.emergency_contact?'#fff':'#2a2a2a',fontSize:14,fontFamily:FB}}>{member.emergency_contact||'Not set'}</div></div>
+          </div>
+        </div></Card>
+
+        {/* Training background */}
+        {(member.martial_arts_experience||member.physical_limitations||member.allergies_medications||member.height_weight)&&<Card><div style={{padding:'14px 16px'}}>
+          <SLabel>Training Info</SLabel>
+          <div style={{display:'flex',flexDirection:'column',gap:12}}>
+            {member.martial_arts_experience&&<div><div style={{color:'#2e2800',fontSize:9,textTransform:'uppercase',letterSpacing:1.5,fontWeight:800,fontFamily:F,marginBottom:3}}>Martial Arts Experience</div><div style={{color:'#888',fontSize:13,fontFamily:FB,lineHeight:1.5}}>{member.martial_arts_experience}</div></div>}
+            {member.physical_limitations&&<div><div style={{color:'#2e2800',fontSize:9,textTransform:'uppercase',letterSpacing:1.5,fontWeight:800,fontFamily:F,marginBottom:3}}>Physical Limitations</div><div style={{color:'#888',fontSize:13,fontFamily:FB,lineHeight:1.5}}>{member.physical_limitations}</div></div>}
+            {member.allergies_medications&&<div><div style={{color:'#2e2800',fontSize:9,textTransform:'uppercase',letterSpacing:1.5,fontWeight:800,fontFamily:F,marginBottom:3}}>Allergies / Medications</div><div style={{color:'#888',fontSize:13,fontFamily:FB,lineHeight:1.5}}>{member.allergies_medications}</div></div>}
+            {member.height_weight&&<div><div style={{color:'#2e2800',fontSize:9,textTransform:'uppercase',letterSpacing:1.5,fontWeight:800,fontFamily:F,marginBottom:3}}>Height / Weight</div><div style={{color:'#888',fontSize:13,fontFamily:FB}}>{member.height_weight}</div></div>}
+          </div>
+        </div></Card>}
+
+        {/* Membership */}
+        <Card><div style={{padding:'14px 16px'}}>
+          <SLabel>Membership</SLabel>
+          <div style={{display:'flex',flexDirection:'column',gap:8}}>
+            <div style={{display:'flex',justifyContent:'space-between'}}>
+              <div><div style={{color:'#2e2800',fontSize:9,textTransform:'uppercase',letterSpacing:1.5,fontWeight:800,fontFamily:F}}>Joined</div><div style={{color:'#fff',fontSize:14,fontWeight:700,fontFamily:F,marginTop:3}}>{member.joined_at?fmtM(member.joined_at):'—'}</div></div>
+              <div style={{textAlign:'right'}}><div style={{color:'#2e2800',fontSize:9,textTransform:'uppercase',letterSpacing:1.5,fontWeight:800,fontFamily:F}}>Next Billing</div><div style={{color:isOD?ORG:GRN,fontSize:14,fontWeight:700,fontFamily:F,marginTop:3}}>{member.next_payment_date?fmtM(member.next_payment_date):'—'}</div></div>
+            </div>
+            {member.waiver_signed_at&&<div style={{paddingTop:8,borderTop:`1px solid ${BL}`}}>
+              <div style={{color:'#2e2800',fontSize:9,textTransform:'uppercase',letterSpacing:1.5,fontWeight:800,fontFamily:F,marginBottom:3}}>Waiver Signed</div>
+              <div style={{color:'#555',fontSize:13,fontFamily:FB}}>{new Date(member.waiver_signed_at).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})} {member.waiver_signed_by&&member.waiver_signed_by!==member.name?`by ${member.waiver_signed_by}`:''}</div>
+            </div>}
+          </div>
+        </div></Card>
+
+        <button onClick={signOut} style={{width:'100%',padding:12,background:'transparent',border:`1px solid ${BL}`,borderRadius:3,color:'#333',fontSize:11,fontFamily:F,letterSpacing:2,textTransform:'uppercase',cursor:'pointer',marginTop:4}}>Sign Out</button>
+      </div>}
+
+            {view==='schedule'&&<div>
+        <div style={{fontWeight:800,fontSize:22,letterSpacing:2,color:G,textTransform:'uppercase',fontFamily:F,marginBottom:18}}>Class Schedule</div>
+        {DAYS.map((day,di)=>{
+          const cls=(initialSchedule||[]).filter(c=>c.day_of_week===di).sort((a,b)=>a.start_time.localeCompare(b.start_time));
+          return <Card key={day}><div style={{display:'flex',gap:14,padding:'14px 16px',alignItems:cls.length?'flex-start':'center'}}>
+            <div style={{width:44,height:44,borderRadius:3,background:cls.length?GK:'transparent',border:`1.5px solid ${cls.length?GD:BL}`,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:12,fontFamily:F,letterSpacing:1.5,color:cls.length?G:'#2a2a2a',flexShrink:0}}>{DAYSS[di].toUpperCase()}</div>
+            <div style={{flex:1,minWidth:0}}>{cls.length===0?<span style={{color:'#2a2a2a',fontSize:13,fontFamily:F}}>Rest Day</span>:cls.map(c=><div key={c.id} style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginBottom:8}}><span style={{color:G,fontSize:14,fontWeight:800,fontFamily:F,flexShrink:0}}>{c.start_time.slice(0,5)}</span><span style={{color:'#fff',fontSize:14,fontWeight:600,fontFamily:F}}>{c.class_name}</span><TPill type={c.type}/>{c.instructor&&<span style={{color:'#444',fontSize:12,fontFamily:FB}}>{c.instructor}</span>}</div>)}</div>
+          </div></Card>;
+        })}
+      </div>}
+
+      {view==='profile'&&<div>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}}>
+          <div style={{fontWeight:800,fontSize:22,letterSpacing:2,color:G,textTransform:'uppercase',fontFamily:F}}>My Profile</div>
+          <GhBtn onClick={openEdit}>Edit</GhBtn>
+        </div>
         <Card><div style={{padding:'18px',display:'flex',alignItems:'flex-start',gap:14}}>
           <div style={{width:52,height:52,borderRadius:3,background:member.avatar_color||'#3e1460',border:`2px solid ${G}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,fontWeight:800,color:G,fontFamily:F,letterSpacing:1.5,flexShrink:0}}>{ini(member.name)}</div>
           <div><div style={{color:'#fff',fontSize:17,fontWeight:800,fontFamily:F}}>{member.name}</div><div style={{color:'#444',fontSize:12,marginTop:2,fontFamily:FB}}>{member.email}</div><div style={{marginTop:10}}><BeltBar belt={member.belt||'White'} stripes={member.stripes||0}/></div></div>
@@ -351,8 +471,22 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
 
     <Modal open={showEdit} onClose={()=>setShowEdit(false)} title="Edit Profile">
       <div style={{display:'flex',flexDirection:'column',gap:14}}>
-        {[{k:'phone',l:'Phone',p:'802-555-0000'},{k:'address',l:'Address',p:'123 Main St...'},{k:'emergency_contact',l:'Emergency Contact',p:'Name - Phone'}].map(f=><div key={f.k}><FL>{f.l}</FL><input value={editForm[f.k]} onChange={e=>setEditForm(p=>({...p,[f.k]:e.target.value}))} placeholder={f.p} style={{width:'100%',background:'#111',border:`1px solid ${BL}`,borderRadius:3,padding:'10px 12px',color:'#fff',fontSize:14,outline:'none',fontFamily:FB,boxSizing:'border-box'}}/></div>)}
-        <div><FL>Avatar Color</FL><div style={{display:'flex',gap:10,flexWrap:'wrap',marginTop:4}}>{AV_COLORS.map(c=><div key={c} onClick={()=>setEditForm(f=>({...f,avatar_color:c}))} style={{width:30,height:30,borderRadius:3,background:c,cursor:'pointer',border:editForm.avatar_color===c?`2px solid ${G}`:'2px solid transparent',boxSizing:'border-box'}}/>)}</div></div>
+        <div style={{display:'flex',flexDirection:'column',gap:12}}>
+          {[
+            {k:'phone',l:'Cell Phone',p:'802-555-0000'},
+            {k:'home_phone',l:'Home Phone',p:'802-555-0000'},
+            {k:'parent_name',l:'Parent / Guardian Name',p:'Parent full name'},
+            {k:'emergency_contact',l:'Emergency Contact',p:'Name - Phone number'},
+          ].map(f=><div key={f.k}><FL>{f.l}</FL><input value={editForm[f.k]} onChange={e=>setEditForm(p=>({...p,[f.k]:e.target.value}))} placeholder={f.p} style={{width:'100%',background:'#111',border:`1px solid ${BL}`,borderRadius:3,padding:'10px 12px',color:'#fff',fontSize:14,outline:'none',fontFamily:FB,boxSizing:'border-box'}}/></div>)}
+          <div><FL>Address Line 1</FL><input value={editForm.address_line1} onChange={e=>setEditForm(p=>({...p,address_line1:e.target.value}))} placeholder="338 Dorset St" style={{width:'100%',background:'#111',border:`1px solid ${BL}`,borderRadius:3,padding:'10px 12px',color:'#fff',fontSize:14,outline:'none',fontFamily:FB,boxSizing:'border-box'}}/></div>
+          <div><FL>Address Line 2</FL><input value={editForm.address_line2} onChange={e=>setEditForm(p=>({...p,address_line2:e.target.value}))} placeholder="Apt, Suite, etc." style={{width:'100%',background:'#111',border:`1px solid ${BL}`,borderRadius:3,padding:'10px 12px',color:'#fff',fontSize:14,outline:'none',fontFamily:FB,boxSizing:'border-box'}}/></div>
+          <div style={{display:'flex',gap:8}}>
+            <div style={{flex:2}}><FL>City</FL><input value={editForm.city} onChange={e=>setEditForm(p=>({...p,city:e.target.value}))} placeholder="South Burlington" style={{width:'100%',background:'#111',border:`1px solid ${BL}`,borderRadius:3,padding:'10px 12px',color:'#fff',fontSize:14,outline:'none',fontFamily:FB,boxSizing:'border-box'}}/></div>
+            <div style={{flex:1}}><FL>State</FL><input value={editForm.state} onChange={e=>setEditForm(p=>({...p,state:e.target.value}))} placeholder="VT" style={{width:'100%',background:'#111',border:`1px solid ${BL}`,borderRadius:3,padding:'10px 12px',color:'#fff',fontSize:14,outline:'none',fontFamily:FB,boxSizing:'border-box'}}/></div>
+            <div style={{flex:1}}><FL>ZIP</FL><input value={editForm.zip} onChange={e=>setEditForm(p=>({...p,zip:e.target.value}))} placeholder="05403" style={{width:'100%',background:'#111',border:`1px solid ${BL}`,borderRadius:3,padding:'10px 12px',color:'#fff',fontSize:14,outline:'none',fontFamily:FB,boxSizing:'border-box'}}/></div>
+          </div>
+          <div><FL>Avatar Color</FL><div style={{display:'flex',gap:10,flexWrap:'wrap',marginTop:4}}>{AV_COLORS.map(c=><div key={c} onClick={()=>setEditForm(f=>({...f,avatar_color:c}))} style={{width:30,height:30,borderRadius:3,background:c,cursor:'pointer',border:editForm.avatar_color===c?`2px solid ${G}`:'2px solid transparent',boxSizing:'border-box'}}/>)}</div></div>
+        </div>
         <div style={{display:'flex',gap:10,marginTop:4}}>
           <GhBtn onClick={()=>setShowEdit(false)} style={{flex:1}}>Cancel</GhBtn>
           <GBtn onClick={saveProfile} style={{flex:2,opacity:saving?.6:1}}>{saving?'Saving...':'Save'}</GBtn>
