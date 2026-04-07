@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
-// ---- Design tokens -- Strava-inspired, High Hat black/gold ----
 // Admin member update -- uses service role key via API
 async function adminUpdate(id, updates) {
   const res = await fetch('/api/member', {
@@ -10,7 +9,11 @@ async function adminUpdate(id, updates) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id, ...updates }),
   });
-  return res.json();
+  const data = await res.json();
+  if (!res.ok || data.error) {
+    console.error('adminUpdate failed:', data.error, 'status:', res.status);
+  }
+  return data;
 }
 
 const G='#c9a227',GD='#8a6e18',GK='#1a1400';
@@ -18,7 +21,7 @@ const BG='#080808',SURF='#111109',CARD='#161610',BL='#242200';
 const GRN='#3dba6b',ORG='#e06c1a',RED='#c94040',BLUE='#3a7abd';
 const F="'Barlow Condensed','Arial Narrow',Arial,sans-serif";
 const FB="'Barlow',Arial,sans-serif";
-const FN="'Barlow Condensed','Arial Narrow',Arial,sans-serif"; // numerics
+const FN="'Barlow Condensed','Arial Narrow',Arial,sans-serif";
 
 const BELT_CFG={
   White:{bg:'#e8e8e0',tx:'#111',br:'#ccc'},
@@ -54,7 +57,6 @@ const fmt=d=>new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric'
 const todayStr=()=>new Date().toISOString().split('T')[0];
 const fmtPrice=c=>'$'+(c/100).toFixed(2);
 
-// ---- Shared UI ----
 const inpStyle={width:'100%',background:SURF,border:`1px solid ${BL}`,borderRadius:6,padding:'13px 16px',color:'#fff',fontSize:16,outline:'none',fontFamily:FB,WebkitAppearance:'none',colorScheme:'dark',boxSizing:'border-box'};
 
 function SLabel({ch}){
@@ -116,7 +118,7 @@ function StatBar({stats,onSessionsClick}){
   return <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',borderBottom:`1px solid ${BL}`,background:SURF}}>
     {stats.map((s,i)=>{
       const isSession=s.l==='Sessions';
-      return <div key={s.l} onClick={isSession?onSessionsClick:undefined} style={{padding:'14px 12px',borderRight:i<3?`1px solid ${BL}`:'none',textAlign:'center',cursor:isSession?'pointer':'default',background:isSession?'transparent':undefined}}>
+      return <div key={s.l} onClick={isSession?onSessionsClick:undefined} style={{padding:'14px 12px',borderRight:i<3?`1px solid ${BL}`:'none',textAlign:'center',cursor:isSession?'pointer':'default'}}>
         <div style={{color:s.c,fontSize:28,fontWeight:900,fontFamily:FN,lineHeight:1,letterSpacing:-1}}>{s.v}</div>
         <div style={{color:'#444',fontSize:10,textTransform:'uppercase',letterSpacing:1.5,fontWeight:700,fontFamily:F,marginTop:4}}>{s.l}</div>
         {isSession&&<div style={{color:GD,fontSize:9,fontFamily:F,letterSpacing:1,textTransform:'uppercase',marginTop:2}}>View All</div>}
@@ -137,6 +139,8 @@ function RosterView({members,setMembers,openDetail}){
   async function add(){
     if(!form.name.trim()||!form.email.trim())return setErr('Name and email required.');
     setSv(true);setErr(null);
+    const res=await fetch('/api/member',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:'NEW',name:form.name.trim(),email:form.email.trim(),belt:form.belt,stripes:isKidsBelt(form.belt)?0:+form.stripes,status:'active',joined_at:todayStr(),next_payment_date:todayStr()})});
+    // For new members we still use supabase insert since PATCH needs an ID
     const{data,error}=await supabase.from('members').insert({name:form.name.trim(),email:form.email.trim(),belt:form.belt,stripes:isKidsBelt(form.belt)?0:+form.stripes,status:'active',joined_at:todayStr(),next_payment_date:todayStr()}).select().single();
     setSv(false);
     if(error){setErr(error.message);return;}
@@ -199,38 +203,41 @@ function DetailModal({id,members,setMembers,onClose}){
   const [genLoading,setGenLoading]=useState(false);
   const [showLink,setShowLink]=useState(false);
   const [showLogSession,setShowLogSession]=useState(false);
+  const [logSessionDate,setLogSessionDate]=useState('');
   const [showSessionLog,setShowSessionLog]=useState(false);
   const [sessionLog,setSessionLog]=useState([]);
   const [sessionLogLoading,setSessionLogLoading]=useState(false);
   const [confirmDelSession,setConfirmDelSession]=useState(null);
-
-  async function loadSessionLog(){
-    setSessionLogLoading(true);
-    const{data}=await supabase.from('sessions').select('*').eq('member_id',id).order('session_date',{ascending:false});
-    setSessionLog(data||[]);
-    setSessionLogLoading(false);
-    setShowSessionLog(true);
-  }
-  async function deleteSession(sessionId){
-    await supabase.from('sessions').delete().eq('id',sessionId);
-    // Decrement count
-    const newCount=Math.max(0,(m.sessions||0)-1);
-    await supabase.from('members').update({sessions:newCount}).eq('id',id);
-    setMembers(ms=>ms.map(x=>x.id===id?{...x,sessions:newCount}:x));
-    setSessionLog(sl=>sl.filter(s=>s.id!==sessionId));
-    setConfirmDelSession(null);
-  }
-  const [logSessionDate,setLogSessionDate]=useState('');
   const [showEditInfo,setShowEditInfo]=useState(false);
   const [editName,setEditName]=useState(m?.name||'');
   const [editPhone,setEditPhone]=useState(m?.phone||'');
   const [editDOB,setEditDOB]=useState(m?.date_of_birth||'');
   const [pwResetSent,setPwResetSent]=useState(false);
   const [uploading,setUploading]=useState(false);
+  const [selectedPrimary,setSelectedPrimary]=useState(m?.primary_member_id||'');
+  const [beltSaveMsg,setBeltSaveMsg]=useState('');
 
+  if(!m)return null;
+  const od=m.status==='overdue'&&m.last_payment?dOD(m.last_payment):0;
+  const primaryMember=m?.primary_member_id?members.find(x=>x.id===m.primary_member_id):null;
+  const dependents=members.filter(x=>x.primary_member_id===id);
+
+  async function loadSessionLog(){
+    setSessionLogLoading(true);
+    const{data}=await supabase.from('sessions').select('*').eq('member_id',id).order('session_date',{ascending:false});
+    setSessionLog(data||[]);setSessionLogLoading(false);setShowSessionLog(true);
+  }
+  async function deleteSession(sessionId){
+    await fetch('/api/log-session',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,memberId:id})});
+    const{data:fresh}=await supabase.from('members').select('sessions').eq('id',id).single();
+    setMembers(ms=>ms.map(x=>x.id===id?{...x,sessions:fresh?.sessions||0}:x));
+    setSessionLog(sl=>sl.filter(s=>s.id!==sessionId));
+    setConfirmDelSession(null);
+  }
   async function saveInfo(){
     setSv(true);
-    await adminUpdate(id,{name:editName,phone:editPhone,date_of_birth:editDOB||null});
+    const result=await adminUpdate(id,{name:editName,phone:editPhone,date_of_birth:editDOB||null});
+    if(result.error){alert('Save failed: '+result.error);setSv(false);return;}
     setMembers(ms=>ms.map(x=>x.id===id?{...x,name:editName,phone:editPhone,date_of_birth:editDOB||null}:x));
     setSv(false);setShowEditInfo(false);
   }
@@ -247,52 +254,44 @@ function DetailModal({id,members,setMembers,onClose}){
     const{error:upErr}=await supabase.storage.from('avatars').upload(path,file,{upsert:true});
     if(!upErr){
       const{data:{publicUrl}}=supabase.storage.from('avatars').getPublicUrl(path);
-      await supabase.from('members').update({avatar_url:publicUrl}).eq('id',id);
+      await adminUpdate(id,{avatar_url:publicUrl});
       setMembers(ms=>ms.map(x=>x.id===id?{...x,avatar_url:publicUrl}:x));
     }
     setUploading(false);
   }
-  const [selectedPrimary,setSelectedPrimary]=useState(m?.primary_member_id||'');
-  if(!m)return null;
-  const od=m.status==='overdue'&&m.last_payment?dOD(m.last_payment):0;
-  const isPrimary=!m?.primary_member_id;
-  const primaryMember=m?.primary_member_id?members.find(x=>x.id===m.primary_member_id):null;
-  const dependents=members.filter(x=>x.primary_member_id===id);
-
   async function saveBelt(){
-    setSv(true);
+    setSv(true);setBeltSaveMsg('');
     const ob=m.belt,os=m.stripes||0;
     const newStripes=isKidsBelt(belt)?0:stripes;
-    await adminUpdate(id,{belt,stripes:newStripes});
+    const result=await adminUpdate(id,{belt,stripes:newStripes});
+    if(result.error){
+      setBeltSaveMsg('Error: '+result.error);
+      setSv(false);return;
+    }
     if(belt!==ob||newStripes!==os){
       await supabase.from('promotions').insert({member_id:id,member_name:m.name,old_belt:ob,old_stripes:os,new_belt:belt,new_stripes:newStripes,promoted_by:'admin'});
     }
     setMembers(ms=>ms.map(x=>x.id===id?{...x,belt,stripes:newStripes}:x));
+    setBeltSaveMsg('Saved!');
+    setTimeout(()=>setBeltSaveMsg(''),2000);
     setSv(false);
   }
-  function openLogSession(){
-    setLogSessionDate(todayStr());
-    setShowLogSession(true);
-  }
+  function openLogSession(){setLogSessionDate(todayStr());setShowLogSession(true);}
   async function confirmLogSession(){
     setSv(true);
     const res=await fetch('/api/log-session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({memberId:id,sessionDate:logSessionDate})});
     const data=await res.json();
     if(res.status===409){alert('A session is already logged for that date.');setSv(false);return;}
     if(data.session){
-      // Increment count locally
-      const n=(m.sessions||0)+1;
-      setMembers(ms=>ms.map(x=>x.id===id?{...x,sessions:n}:x));
+      const{data:fresh}=await supabase.from('members').select('sessions').eq('id',id).single();
+      setMembers(ms=>ms.map(x=>x.id===id?{...x,sessions:fresh?.sessions||0}:x));
       setShowLogSession(false);
-    } else {
-      alert('Error: '+(data.error||'Could not save session'));
-    }
+    } else alert('Error: '+(data.error||'Could not save session'));
     setSv(false);
   }
   async function setStat(s){
     setSv(true);const u={status:s};if(s==='active')u.last_payment=todayStr();
     await adminUpdate(id,u);
-    // Cascade to dependents
     const deps=members.filter(x=>x.primary_member_id===id);
     await Promise.all(deps.map(d=>adminUpdate(d.id,u)));
     setMembers(ms=>ms.map(x=>x.id===id||x.primary_member_id===id?{...x,...u}:x));
@@ -385,7 +384,6 @@ function DetailModal({id,members,setMembers,onClose}){
     </div>
     {m.status==='overdue'&&<div style={{background:'#1a0800',border:'1px solid #7a3300',borderRadius:8,padding:'12px 14px',marginBottom:12,color:ORG,fontSize:14,fontFamily:FB}}>Payment {od} day{od!==1?'s':''} overdue</div>}
 
-    {/* Payment */}
     <div style={{background:SURF,borderRadius:8,padding:'14px 16px',marginBottom:12}}>
       <SLabel ch="Payment"/>
       <div style={{display:'flex',justifyContent:'space-between',marginBottom:m.stripe_customer_id?10:0}}>
@@ -398,7 +396,6 @@ function DetailModal({id,members,setMembers,onClose}){
       </button>
     </div>
 
-    {/* Belt */}
     <div style={{background:SURF,borderRadius:8,padding:'14px 16px',marginBottom:12}}>
       <SLabel ch="Update Belt"/>
       <div style={{display:'flex',gap:8,alignItems:'center'}}>
@@ -406,9 +403,9 @@ function DetailModal({id,members,setMembers,onClose}){
         {!isKidsBelt(belt)&&<div style={{width:90}}><FS value={stripes} onChange={e=>setStr(+e.target.value)} options={[0,1,2,3,4].map(n=>({v:n,l:n}))}/></div>}
         <GBtn ch="Save" onClick={saveBelt} sm disabled={sv}/>
       </div>
+      {beltSaveMsg&&<div style={{marginTop:8,fontSize:12,fontFamily:FB,color:beltSaveMsg.startsWith('Error')?RED:GRN}}>{beltSaveMsg}</div>}
     </div>
 
-    {/* Family link */}
     <div style={{background:SURF,borderRadius:8,padding:'14px 16px',marginBottom:12}}>
       <SLabel ch="Family / Payment Link"/>
       {primaryMember&&<div style={{color:'#888',fontSize:14,fontFamily:FB,marginBottom:8}}>Paying via <span style={{color:G,fontWeight:700}}>{primaryMember.name}</span><button onClick={()=>{setSelectedPrimary('');setShowLink(true);}} style={{marginLeft:10,background:'none',border:'none',color:'#555',fontSize:11,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>Change</button></div>}
@@ -427,7 +424,6 @@ function DetailModal({id,members,setMembers,onClose}){
       </div>}
     </div>
 
-    {/* Actions */}
     <div style={{display:'flex',gap:8,marginBottom:10,flexWrap:'wrap'}}>
       <button onClick={openLogSession} disabled={sv} style={{flex:'1 1 120px',padding:14,background:'#0a1a0a',border:`1px solid #2a6a2a`,borderRadius:8,color:GRN,fontSize:13,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>+ Session</button>
       {m.status!=='active'?<button onClick={()=>setStat('active')} disabled={sv} style={{flex:'1 1 120px',padding:14,background:'#0a1a0a',border:`1px solid #2a6a2a`,borderRadius:8,color:GRN,fontSize:13,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>Mark Active</button>
@@ -457,7 +453,6 @@ function DetailModal({id,members,setMembers,onClose}){
       <div style={{display:'flex',gap:8}}><GhBtn ch="Keep It" onClick={()=>setConf(false)} style={{flex:1}}/><DBtn ch={cancelling?'Cancelling...':'Yes, Cancel'} onClick={cancelSub} style={{flex:1}} disabled={cancelling}/></div>
     </div>}
 
-    {/* Session log modal */}
     {showSessionLog&&<div style={{background:SURF,border:`1px solid ${BL}`,borderRadius:10,padding:'16px',marginBottom:10}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
         <div style={{color:G,fontSize:13,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase'}}>Session Log — {m.name}</div>
@@ -562,13 +557,9 @@ function ScheduleView({schedule,setSchedule}){
     }
     setSv(false);setModal(null);
   }
-  function del(id,name){
-    setConfirmDelId(id);
-    setConfirmDelName(name);
-  }
+  function del(id,name){setConfirmDelId(id);setConfirmDelName(name);}
   async function confirmDel(){
-    const id=confirmDelId;
-    setConfirmDelId(null);
+    const id=confirmDelId;setConfirmDelId(null);
     const res=await fetch('/api/schedule',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
     const d=await res.json();
     if(d.success)setSchedule(s=>s.filter(c=>c.id!==id));
@@ -624,7 +615,6 @@ function ScheduleView({schedule,setSchedule}){
         <DBtn ch="Yes, Remove" onClick={confirmDel} style={{flex:1}}/>
       </div>
     </div>}/>
-
     <Modal open={modal!==null} onClose={()=>setModal(null)} title={modal==='new'?'Add Class':'Edit Class'} ch={<div style={{display:'flex',flexDirection:'column',gap:14}}>
       <div style={{display:'flex',gap:12}}><div style={{flex:1}}><FL ch="Day"/><FS value={form.day_of_week} onChange={e=>setForm(f=>({...f,day_of_week:+e.target.value}))} options={DAYS.map((d,i)=>({v:i,l:d}))}/></div><div style={{flex:1}}><FL ch="Time"/><input type="time" value={form.start_time} onChange={e=>setForm(f=>({...f,start_time:e.target.value}))} style={inpStyle}/></div></div>
       <div><FL ch="Class Name"/><FI value={form.class_name} onChange={e=>setForm(f=>({...f,class_name:e.target.value}))} placeholder="e.g. Fundamentals"/></div>
@@ -708,7 +698,7 @@ function RecentPromotions(){
       </div>
       <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4,flexShrink:0}}>
         <div style={{color:'#333',fontSize:12,fontFamily:F}}>{fmt(p.promoted_at)}</div>
-        <button onClick={async()=>{if(!window.confirm('Delete this promotion record?'))return;await supabase.from('promotions').delete().eq('id',p.id);setPromos(ps=>ps.filter(x=>x.id!==p.id));}} style={{padding:'2px 8px',background:'transparent',border:'1px solid #4a1000',borderRadius:4,color:'#7a2a00',fontSize:9,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>Delete</button>
+        <button onClick={async()=>{await supabase.from('promotions').delete().eq('id',p.id);setPromos(ps=>ps.filter(x=>x.id!==p.id));}} style={{padding:'2px 8px',background:'transparent',border:'1px solid #4a1000',borderRadius:4,color:'#7a2a00',fontSize:9,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>Delete</button>
       </div>
     </div>)}
   </div>;
@@ -789,20 +779,15 @@ export default function AdminApp({initialMembers,initialSchedule,initialProducts
   const [confirmDelGlobalSession,setConfirmDelGlobalSession]=useState(null);
 
   async function loadAllSessions(){
-    setAllSessionsLoading(true);
-    setShowAllSessions(true);
+    setAllSessionsLoading(true);setShowAllSessions(true);
     const{data}=await supabase.from('sessions').select('*, members(name)').order('session_date',{ascending:false}).limit(200);
-    setAllSessions(data||[]);
-    setAllSessionsLoading(false);
+    setAllSessions(data||[]);setAllSessionsLoading(false);
   }
   async function deleteGlobalSession(sessionId,memberId){
-    await supabase.from('sessions').delete().eq('id',sessionId);
-    const m=members.find(x=>x.id===memberId);
-    if(m){
-      const newCount=Math.max(0,(m.sessions||0)-1);
-      await supabase.from('members').update({sessions:newCount}).eq('id',memberId);
-      setMembers(ms=>ms.map(x=>x.id===memberId?{...x,sessions:newCount}:x));
-    }
+    await fetch('/api/log-session',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,memberId})});
+    const{data:fresh}=await supabase.from('members').select('sessions').eq('id',memberId).single();
+    const newCount=fresh?.sessions||0;
+    setMembers(ms=>ms.map(x=>x.id===memberId?{...x,sessions:newCount}:x));
     setAllSessions(s=>s.filter(x=>x.id!==sessionId));
     setConfirmDelGlobalSession(null);
   }
@@ -849,7 +834,6 @@ export default function AdminApp({initialMembers,initialSchedule,initialProducts
     <div style={{height:80}}/>
     {detailId&&<DetailModal id={detailId} members={members} setMembers={setMembers} onClose={()=>setDetailId(null)}/>}
 
-    {/* Global sessions modal */}
     {showAllSessions&&<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.88)',zIndex:200,display:'flex',alignItems:'flex-end',justifyContent:'center'}}>
       <div style={{background:'#0e0e0c',border:`1px solid ${BL}`,borderRadius:'16px 16px 0 0',width:'100%',maxWidth:520,maxHeight:'88vh',display:'flex',flexDirection:'column'}}>
         <div style={{width:40,height:4,background:'#333',borderRadius:2,margin:'12px auto 0',flexShrink:0}}/>
