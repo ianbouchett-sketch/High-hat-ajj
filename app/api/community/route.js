@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
+export const revalidate = 0;
+
 export async function GET() {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -23,11 +25,13 @@ export async function GET() {
   if (tErr) console.error('trainers error:', tErr);
   if (pErr) console.error('promos error:', pErr);
 
-  // Normalize sessions to 0 if null
   const normalizedTrainers = (trainers || []).map(t => ({
     ...t,
     sessions: t.sessions || 0,
   }));
 
-  return Response.json({ trainers: normalizedTrainers, promos: promos || [] });
+  return Response.json(
+    { trainers: normalizedTrainers, promos: promos || [] },
+    { headers: { 'Cache-Control': 'no-store' } }
+  );
 }

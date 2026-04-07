@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 
 const G='#c9a227',GD='#8a6e18',GK='#1a1400';
 const BG='#080808',SURF='#111109',CARD='#161610',BL='#242200';
-const GRN='#3dba6b',ORG='#e06c1a',BLUE='#3a7abd';
+const GRN='#3dba6b',ORG='#e06c1a',BLUE='#3a7abd',RED='#c94040';
 const F="'Barlow Condensed','Arial Narrow',Arial,sans-serif";
 const FB="'Barlow',Arial,sans-serif";
 const FN="'Barlow Condensed','Arial Narrow',Arial,sans-serif";
@@ -50,14 +50,7 @@ function computeStreak(sessions){
   for(const x of s){const d=new Date(x.session_date);if(Math.round((cur-d)/86400000)<=2){st++;cur=d;}else break;}
   return st;
 }
-
-function SLabel({children}){
-  return <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16}}>
-    <div style={{width:3,height:14,background:G,borderRadius:2,flexShrink:0}}/>
-    <span style={{color:G,fontSize:11,fontWeight:800,letterSpacing:2.5,textTransform:'uppercase',fontFamily:F}}>{children}</span>
-    <div style={{flex:1,height:1,background:BL}}/>
-  </div>;
-}
+function SLabel({children}){return <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16}}><div style={{width:3,height:14,background:G,borderRadius:2,flexShrink:0}}/><span style={{color:G,fontSize:11,fontWeight:800,letterSpacing:2.5,textTransform:'uppercase',fontFamily:F}}>{children}</span><div style={{flex:1,height:1,background:BL}}/></div>;}
 function Card({children,style={}}){return <div style={{background:CARD,border:`1px solid ${BL}`,borderRadius:10,marginBottom:14,overflow:'hidden',...style}}>{children}</div>}
 function GBtn({children,onClick,style={}}){return <button onClick={onClick} style={{padding:'11px 22px',background:G,border:'none',borderRadius:6,color:'#000',fontWeight:800,fontSize:14,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',...style}}>{children}</button>}
 function GhBtn({children,onClick,style={}}){return <button onClick={onClick} style={{padding:'9px 16px',background:'transparent',border:`1px solid ${BL}`,borderRadius:6,color:'#777',fontSize:12,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',...style}}>{children}</button>}
@@ -75,7 +68,6 @@ function Modal({open,onClose,title,children}){
     </div>
   </div>;
 }
-
 function BeltBar({belt,stripes}){
   const c=BELT_CFG[belt]||BELT_CFG.White,sc=belt==='White'?'#111':'#fff';
   const kids=isKidsBelt(belt);
@@ -87,7 +79,6 @@ function BeltBar({belt,stripes}){
     {!kids&&<div style={{color:'#444',fontSize:11,fontFamily:F,fontWeight:700,letterSpacing:1}}>{stripes} of 4 stripes</div>}
   </div>;
 }
-
 function Logo(){
   return <div style={{display:'flex',alignItems:'center',gap:10}}>
     <img src="/logo.png" alt="High Hat BJJ" style={{height:36,width:'auto',objectFit:'contain'}} onError={e=>{e.target.style.display='none';e.target.nextSibling.style.display='flex';}}/>
@@ -104,6 +95,7 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
   const [member,setMember]=useState(initialMember||{name:'Member',email:'',belt:'White',stripes:0,status:'inactive',joined_at:TODAYSTR,next_payment_date:TODAYSTR,avatar_color:'#3e1460'});
   const [sessions,setSessions]=useState(initialSessions||[]);
   const [view,setView]=useState('home');
+  const [refreshKey,setRefreshKey]=useState(0);
   const [showLog,setShowLog]=useState(false);
   const [showEdit,setShowEdit]=useState(false);
   const [toast,setToast]=useState(null);
@@ -113,26 +105,10 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
   const [expandedId,setExpandedId]=useState(null);
   const [saving,setSaving]=useState(false);
   const [confirmDelSession,setConfirmDelSession]=useState(null);
-
-  async function deleteSession(sessionId){
-    const res=await fetch('/api/log-session',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,memberId:member.id})});
-    if(res.ok){
-      setSessions(s=>s.filter(x=>x.id!==sessionId));
-      showT('Session removed.');
-    }
-    setConfirmDelSession(null);
-  }
   const [showPendingModal,setShowPendingModal]=useState(false);
-
-  // Show pending payment popup on first load if status is pending
-  useEffect(()=>{
-    if(initialMember?.status==='pending'&&initialMember?.stripe_checkout_session){
-      setShowPendingModal(true);
-    }
-  },[]);
   const [community,setCommunity]=useState({topTrainers:[],recentPromos:[],loaded:false});
-  const [likes,setLikes]=useState({}); // promoId -> {count, liked}
-  const [attendance,setAttendance]=useState({}); // scheduleId -> [memberNames]
+  const [likes,setLikes]=useState({});
+  const [attendance,setAttendance]=useState({});
   const [myAttendance,setMyAttendance]=useState(new Set());
   const [showPromo,setShowPromo]=useState(false);
   const [promoConfirm,setPromoConfirm]=useState(false);
@@ -140,7 +116,23 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
   const [promoStripes,setPromoStripes]=useState(0);
   const [promoSaving,setPromoSaving]=useState(false);
 
-  // Get Monday of current week
+  useEffect(()=>{
+    if(initialMember?.status==='pending'&&initialMember?.stripe_checkout_session){
+      setShowPendingModal(true);
+    }
+  },[]);
+
+  // Refresh community data when tab becomes visible again (handles admin deleting promos)
+  useEffect(()=>{
+    function onVisible(){
+      if(document.visibilityState==='visible'){
+        setRefreshKey(k=>k+1);
+      }
+    }
+    document.addEventListener('visibilitychange',onVisible);
+    return ()=>document.removeEventListener('visibilitychange',onVisible);
+  },[]);
+
   function getWeekStart(){
     const d=new Date();const day=d.getDay();const diff=d.getDate()-(day===0?6:day-1);
     const mon=new Date(d.setDate(diff));return mon.toISOString().split('T')[0];
@@ -148,6 +140,7 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
 
   useEffect(()=>{
     if(view!=='home')return;
+    setCommunity(c=>({...c,loaded:false}));
     async function loadCommunity(){
       const weekStart=getWeekStart();
       const[communityRes,{data:likeData},{data:attData},{data:myAtt}]=await Promise.all([
@@ -159,7 +152,6 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
       const trainers=communityRes.trainers||[];
       const promos=communityRes.promos||[];
       setCommunity({topTrainers:trainers,recentPromos:promos,loaded:true});
-      // Build likes map
       const lMap={};
       (likeData||[]).forEach(l=>{
         if(!lMap[l.promotion_id])lMap[l.promotion_id]={count:0,liked:false};
@@ -167,7 +159,6 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
         if(l.member_id===initialMember?.id)lMap[l.promotion_id].liked=true;
       });
       setLikes(lMap);
-      // Build attendance map
       const aMap={};
       (attData||[]).forEach(a=>{
         if(!aMap[a.schedule_id])aMap[a.schedule_id]=[];
@@ -177,8 +168,18 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
       setMyAttendance(new Set((myAtt||[]).map(a=>a.schedule_id)));
     }
     loadCommunity();
-  },[view]);
+  },[view,refreshKey]);
 
+  function goTo(id){
+    if(id==='home')setRefreshKey(k=>k+1);
+    setView(id);
+  }
+
+  async function deleteSession(sessionId){
+    const res=await fetch('/api/log-session',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,memberId:member.id})});
+    if(res.ok){setSessions(s=>s.filter(x=>x.id!==sessionId));showT('Session removed.');}
+    setConfirmDelSession(null);
+  }
   async function toggleLike(promoId){
     const current=likes[promoId]||{count:0,liked:false};
     if(current.liked){
@@ -189,7 +190,6 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
       setLikes(l=>({...l,[promoId]:{count:(l[promoId]?.count||0)+1,liked:true}}));
     }
   }
-
   async function toggleAttendance(scheduleId){
     const weekStart=getWeekStart();
     if(myAttendance.has(scheduleId)){
@@ -215,20 +215,16 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
   const cnt=sessions.length,streak=computeStreak(sessions);
   const earned=MILES.filter(m=>cnt>=m.n),next=MILES.find(m=>cnt<m.n);
   const isOD=member.status==='overdue';
-
   function showT(msg){setToast(msg);setTimeout(()=>setToast(null),2800);}
+
   async function logSession(){
     if(sessions.find(s=>s.session_date===logDate)){showT('Already logged for that date.');setShowLog(false);return;}
     setSaving(true);
     const res=await fetch('/api/log-session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({memberId:member.id,sessionDate:logDate,note:logNote})});
     const data=await res.json();
     if(res.status===409){showT('Already logged for that date.');setShowLog(false);setSaving(false);return;}
-    if(data.session){
-      setSessions(s=>[data.session,...s]);
-      showT('Session logged!');
-    } else {
-      showT('Error: '+(data.error||'Could not save session'));
-    }
+    if(data.session){setSessions(s=>[data.session,...s]);showT('Session logged!');}
+    else showT('Error: '+(data.error||'Could not save session'));
     setLogNote('');setShowLog(false);setSaving(false);
   }
   function openEdit(){setEditForm({phone:member.phone||'',home_phone:member.home_phone||'',parent_name:member.parent_name||'',address_line1:member.address_line1||'',address_line2:member.address_line2||'',city:member.city||'',state:member.state||'',zip:member.zip||'',emergency_contact:member.emergency_contact||'',avatar_color:member.avatar_color||'#3e1460'});setShowEdit(true);}
@@ -251,21 +247,16 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
 
   return <div style={{minHeight:'100vh',background:BG,color:'#fff',fontFamily:FB}}>
     {toast&&<div style={{position:'fixed',top:16,left:'50%',transform:'translateX(-50%)',background:'#1a1400',border:`1px solid ${G}`,borderRadius:20,padding:'11px 20px',color:G,fontSize:14,fontWeight:800,fontFamily:F,letterSpacing:1,zIndex:300,whiteSpace:'nowrap',boxShadow:'0 4px 20px rgba(0,0,0,.5)'}}>{toast}</div>}
-
     <div style={{height:3,background:`linear-gradient(90deg,${G},${GD})`}}/>
     <div style={{background:SURF,borderBottom:`1px solid ${BL}`,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 20px',height:60,position:'sticky',top:0,zIndex:40}}>
       <Logo/>
       <GBtn onClick={()=>setShowLog(true)} style={{fontSize:13,padding:'9px 18px'}}>+ Session</GBtn>
     </div>
-
     <div style={{padding:'20px',paddingBottom:100}}>
 
-      {/* ---- HOME ---- */}
       {view==='home'&&<div>
         {isOD&&<div style={{background:'#1a0800',border:'1px solid #7a3300',borderRadius:10,padding:'14px 18px',marginBottom:14,color:ORG,fontSize:15,fontFamily:FB,fontWeight:600}}>Payment overdue — Contact your instructor.</div>}
-
-        {/* Hero card */}
-        <div style={{background:`linear-gradient(135deg,${CARD} 0%,${BELT_CFG[member.belt]?.gl?`rgba(0,0,0,0)`:CARD} 100%)`,border:`1px solid ${BL}`,borderRadius:12,marginBottom:14,overflow:'hidden',position:'relative'}}>
+        <div style={{background:`linear-gradient(135deg,${CARD} 0%,rgba(0,0,0,0) 100%)`,border:`1px solid ${BL}`,borderRadius:12,marginBottom:14,overflow:'hidden',position:'relative'}}>
           <div style={{position:'absolute',top:0,right:0,width:120,height:120,background:BELT_CFG[member.belt]?.bg||'#111',opacity:.06,borderRadius:'0 12px 0 100%'}}/>
           <div style={{height:3,background:`linear-gradient(90deg,${G}80,transparent)`}}/>
           <div style={{padding:'22px 20px'}}>
@@ -283,7 +274,6 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
           </div>
         </div>
 
-        {/* Promo button */}
         {getPromoOptions().length>0&&!showPromo&&<button onClick={()=>setShowPromo(true)} style={{width:'100%',padding:'11px',background:'transparent',border:`1px solid ${BL}`,borderRadius:8,color:GD,fontSize:12,fontFamily:F,letterSpacing:1.5,textTransform:'uppercase',cursor:'pointer',marginBottom:14}}>Update My Rank</button>}
         {showPromo&&!promoConfirm&&<div style={{background:CARD,border:`1px solid ${BL}`,borderRadius:10,padding:'18px',marginBottom:14}}>
           <SLabel>Update My Rank</SLabel>
@@ -307,7 +297,6 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
           </div>
         </div>}
 
-        {/* Stats */}
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:14}}>
           {[{l:'Sessions',v:cnt,c:G},{l:'Streak',v:`${streak}d`,c:GRN},{l:'Status',v:member.status==='pending'?'Pending':isOD?'Overdue':'Paid Up',c:member.status==='pending'?BLUE:isOD?ORG:GRN}].map(s=><div key={s.l} style={{background:CARD,border:`1px solid ${BL}`,borderRadius:10,padding:'14px 10px',textAlign:'center'}}>
             <div style={{color:'#444',fontSize:10,textTransform:'uppercase',letterSpacing:1.5,fontWeight:700,fontFamily:F}}>{s.l}</div>
@@ -315,13 +304,11 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
           </div>)}
         </div>
 
-        {/* Next payment */}
-        {/* Pending payment banner */}
         {member.status==='pending'&&<div style={{background:'#0a1020',border:`1px solid ${BLUE}40`,borderRadius:10,padding:'16px 18px',marginBottom:14}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}>
             <div>
               <div style={{color:BLUE,fontSize:13,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',marginBottom:4}}>Membership Pending</div>
-              <div style={{color:'#888',fontSize:13,fontFamily:FB,lineHeight:1.5}}>Your account is set up. Complete payment to activate your membership.</div>
+              <div style={{color:'#888',fontSize:13,fontFamily:FB,lineHeight:1.5}}>Complete payment to activate your membership.</div>
             </div>
             {member.stripe_checkout_session&&<button onClick={()=>setShowPendingModal(true)} style={{padding:'10px 18px',background:BLUE,border:'none',borderRadius:6,color:'#fff',fontSize:13,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',flexShrink:0}}>Complete Payment</button>}
             {!member.stripe_checkout_session&&<div style={{color:'#555',fontSize:12,fontFamily:FB}}>Contact your instructor for a payment link.</div>}
@@ -339,20 +326,15 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
           </div>
         </div></Card>}
 
-        {/* Milestone */}
         {next&&<Card><div style={{padding:'16px 18px'}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:12}}>
-            <div>
-              <div style={{color:'#444',fontSize:11,textTransform:'uppercase',letterSpacing:1.5,fontWeight:700,fontFamily:F,marginBottom:4}}>Next Milestone</div>
-              <div style={{color:'#fff',fontSize:18,fontWeight:800,fontFamily:FB}}>{next.i} {next.l}</div>
-            </div>
+            <div><div style={{color:'#444',fontSize:11,textTransform:'uppercase',letterSpacing:1.5,fontWeight:700,fontFamily:F,marginBottom:4}}>Next Milestone</div><div style={{color:'#fff',fontSize:18,fontWeight:800,fontFamily:FB}}>{next.i} {next.l}</div></div>
             <span style={{color:G,fontWeight:900,fontSize:15,fontFamily:FN}}>{cnt}/{next.n}</span>
           </div>
           <div style={{height:5,background:'#1a1a00',borderRadius:3}}><div style={{height:5,borderRadius:3,background:G,width:`${Math.min((cnt/next.n)*100,100)}%`,boxShadow:`0 0 8px ${G}60`}}/></div>
           <div style={{color:'#444',fontSize:12,marginTop:8,fontFamily:FB}}>{next.n-cnt} sessions to go</div>
         </div></Card>}
 
-        {/* Badges */}
         {earned.length>0&&<Card><div style={{padding:'16px 18px'}}>
           <SLabel>Milestones Earned</SLabel>
           <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>{earned.map(m=><div key={m.n} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:6,background:SURF,border:`1px solid ${BL}`,borderRadius:8,padding:'14px 16px',minWidth:72}}>
@@ -361,11 +343,10 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
           </div>)}</div>
         </div></Card>}
 
-        {/* Recent sessions */}
         <Card><div style={{padding:'16px 18px'}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
             <SLabel>Recent Sessions</SLabel>
-            <button onClick={()=>setView('journal')} style={{background:'none',border:'none',color:GD,fontSize:11,cursor:'pointer',fontFamily:F,letterSpacing:1,textTransform:'uppercase',fontWeight:800,padding:0}}>View All</button>
+            <button onClick={()=>goTo('journal')} style={{background:'none',border:'none',color:GD,fontSize:11,cursor:'pointer',fontFamily:F,letterSpacing:1,textTransform:'uppercase',fontWeight:800,padding:0}}>View All</button>
           </div>
           {sessions.slice(0,4).map(s=><div key={s.id} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 0',borderBottom:`1px solid ${BL}`}}>
             <div style={{width:6,height:6,borderRadius:'50%',background:G,flexShrink:0}}/>
@@ -375,7 +356,6 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
           {sessions.length===0&&<div style={{color:'#333',fontSize:14,fontFamily:FB}}>No sessions yet. Log your first one!</div>}
         </div></Card>
 
-        {/* Top Trainers */}
         <Card><div style={{padding:'16px 18px'}}>
           <SLabel>Top Trainers</SLabel>
           {!community.loaded&&<div style={{color:'#333',fontSize:14,fontFamily:FB}}>Loading...</div>}
@@ -397,7 +377,6 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
           {community.loaded&&community.topTrainers.length===0&&<div style={{color:'#333',fontSize:14,fontFamily:FB}}>No data yet.</div>}
         </div></Card>
 
-        {/* Recent promotions */}
         {community.recentPromos.length>0&&<Card><div style={{padding:'16px 18px'}}>
           <SLabel>Recent Promotions</SLabel>
           {community.recentPromos.map(p=>{
@@ -427,7 +406,6 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
         </div></Card>}
       </div>}
 
-      {/* ---- JOURNAL ---- */}
       {view==='journal'&&<div>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',marginBottom:18}}>
           <div>
@@ -460,7 +438,6 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
         </div></Card>
       </div>}
 
-      {/* ---- SCHEDULE ---- */}
       {view==='schedule'&&<div>
         <div style={{fontWeight:800,fontSize:26,color:'#fff',fontFamily:FB,marginBottom:18}}>Class Schedule</div>
         {DAYS.map((day,di)=>{
@@ -499,7 +476,6 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
         })}
       </div>}
 
-      {/* ---- PROFILE ---- */}
       {view==='profile'&&<div>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}}>
           <div style={{fontWeight:800,fontSize:26,color:'#fff',fontFamily:FB}}>My Profile</div>
@@ -518,7 +494,6 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
             <div style={{marginTop:12}}><BeltBar belt={member.belt||'White'} stripes={member.stripes||0}/></div>
           </div>
         </div></Card>
-
         <Card><div style={{padding:'16px 18px'}}>
           <SLabel>Contact</SLabel>
           <div style={{display:'flex',flexDirection:'column',gap:12}}>
@@ -528,7 +503,6 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
             </div>)}
           </div>
         </div></Card>
-
         {(member.address_line1||member.city)&&<Card><div style={{padding:'16px 18px'}}>
           <SLabel>Address</SLabel>
           <div style={{display:'flex',gap:12,alignItems:'flex-start'}}>
@@ -540,7 +514,6 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
             </div>
           </div>
         </div></Card>}
-
         <Card><div style={{padding:'16px 18px'}}>
           <SLabel>Emergency Contact</SLabel>
           <div style={{display:'flex',gap:12,alignItems:'flex-start'}}>
@@ -548,7 +521,6 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
             <div style={{color:member.emergency_contact?'#fff':'#333',fontSize:15,fontFamily:FB}}>{member.emergency_contact||'Not set'}</div>
           </div>
         </div></Card>
-
         {(member.martial_arts_experience||member.physical_limitations||member.allergies_medications||member.height_weight)&&<Card><div style={{padding:'16px 18px'}}>
           <SLabel>Training Info</SLabel>
           <div style={{display:'flex',flexDirection:'column',gap:14}}>
@@ -558,7 +530,6 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
             </div>)}
           </div>
         </div></Card>}
-
         <Card><div style={{padding:'16px 18px'}}>
           <SLabel>Membership</SLabel>
           <div style={{display:'flex',justifyContent:'space-between',marginBottom:member.waiver_signed_at?12:0}}>
@@ -570,16 +541,14 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
             <div style={{color:'#555',fontSize:14,fontFamily:FB}}>{new Date(member.waiver_signed_at).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}{member.waiver_signed_by&&member.waiver_signed_by!==member.name?` by ${member.waiver_signed_by}`:''}</div>
           </div>}
         </div></Card>
-
         <button onClick={signOut} style={{width:'100%',padding:14,background:'transparent',border:`1px solid ${BL}`,borderRadius:8,color:'#444',fontSize:12,fontFamily:F,letterSpacing:2,textTransform:'uppercase',cursor:'pointer',marginTop:4}}>Sign Out</button>
       </div>}
     </div>
 
-    {/* Bottom nav */}
     <div style={{position:'fixed',bottom:0,left:0,right:0,background:'#0a0a08',borderTop:`1px solid ${BL}`,display:'flex',zIndex:50,paddingBottom:'env(safe-area-inset-bottom)'}}>
       {navs.map(n=>{
         const active=view===n.id;
-        return <button key={n.id} onClick={()=>setView(n.id)} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'10px 4px 8px',background:'transparent',border:'none',cursor:'pointer',gap:3,position:'relative'}}>
+        return <button key={n.id} onClick={()=>goTo(n.id)} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'10px 4px 8px',background:'transparent',border:'none',cursor:'pointer',gap:3,position:'relative'}}>
           {active&&<div style={{position:'absolute',top:0,left:'50%',transform:'translateX(-50%)',width:24,height:3,background:G,borderRadius:'0 0 3px 3px'}}/>}
           <span style={{fontSize:20,lineHeight:1,color:active?G:'#555'}}>{n.icon}</span>
           <span style={{fontSize:9,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',color:active?G:'#444'}}>{n.l}</span>
@@ -588,21 +557,13 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
     </div>
     <div style={{height:80}}/>
 
-    {/* Pending payment modal -- shown on login if payment link exists */}
     {showPendingModal&&member.stripe_checkout_session&&<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.92)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
       <div style={{background:'#0e0e0c',border:`1px solid ${BLUE}40`,borderRadius:16,width:'100%',maxWidth:400,padding:28}}>
         <div style={{width:40,height:40,borderRadius:10,background:'#0a1020',border:`1px solid ${BLUE}40`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,marginBottom:16}}>🥋</div>
         <div style={{fontWeight:800,fontSize:20,letterSpacing:1,color:'#fff',fontFamily:F,textTransform:'uppercase',marginBottom:8}}>Complete Your Membership</div>
-        <div style={{color:'#888',fontSize:14,fontFamily:FB,lineHeight:1.6,marginBottom:20}}>
-          Your account is created and your instructor has sent you a payment link. Complete your first payment to activate your membership and get full access.
-        </div>
-        <a href={`https://checkout.stripe.com/c/pay/${member.stripe_checkout_session}`} target="_blank" rel="noreferrer"
-          style={{display:'block',width:'100%',padding:'14px',background:G,border:'none',borderRadius:8,color:'#000',fontWeight:800,fontSize:15,fontFamily:F,letterSpacing:1.5,textTransform:'uppercase',cursor:'pointer',textDecoration:'none',textAlign:'center',boxSizing:'border-box',marginBottom:10}}>
-          Complete Payment →
-        </a>
-        <button onClick={()=>setShowPendingModal(false)} style={{width:'100%',padding:'11px',background:'transparent',border:`1px solid ${BL}`,borderRadius:8,color:'#555',fontSize:12,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>
-          I'll do this later
-        </button>
+        <div style={{color:'#888',fontSize:14,fontFamily:FB,lineHeight:1.6,marginBottom:20}}>Your account is created. Complete your first payment to activate your membership and get full access.</div>
+        <a href={`https://checkout.stripe.com/c/pay/${member.stripe_checkout_session}`} target="_blank" rel="noreferrer" style={{display:'block',width:'100%',padding:'14px',background:G,border:'none',borderRadius:8,color:'#000',fontWeight:800,fontSize:15,fontFamily:F,letterSpacing:1.5,textTransform:'uppercase',cursor:'pointer',textDecoration:'none',textAlign:'center',boxSizing:'border-box',marginBottom:10}}>Complete Payment →</a>
+        <button onClick={()=>setShowPendingModal(false)} style={{width:'100%',padding:'11px',background:'transparent',border:`1px solid ${BL}`,borderRadius:8,color:'#555',fontSize:12,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>I'll do this later</button>
       </div>
     </div>}
 
