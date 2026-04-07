@@ -3,6 +3,16 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
 // ---- Design tokens -- Strava-inspired, High Hat black/gold ----
+// Admin member update -- uses service role key via API
+async function adminUpdate(id, updates) {
+  const res = await fetch('/api/member', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, ...updates }),
+  });
+  return res.json();
+}
+
 const G='#c9a227',GD='#8a6e18',GK='#1a1400';
 const BG='#080808',SURF='#111109',CARD='#161610',BL='#242200';
 const GRN='#3dba6b',ORG='#e06c1a',RED='#c94040',BLUE='#3a7abd';
@@ -220,7 +230,7 @@ function DetailModal({id,members,setMembers,onClose}){
 
   async function saveInfo(){
     setSv(true);
-    await supabase.from('members').update({name:editName,phone:editPhone,date_of_birth:editDOB||null}).eq('id',id);
+    await adminUpdate(id,{name:editName,phone:editPhone,date_of_birth:editDOB||null});
     setMembers(ms=>ms.map(x=>x.id===id?{...x,name:editName,phone:editPhone,date_of_birth:editDOB||null}:x));
     setSv(false);setShowEditInfo(false);
   }
@@ -252,11 +262,12 @@ function DetailModal({id,members,setMembers,onClose}){
   async function saveBelt(){
     setSv(true);
     const ob=m.belt,os=m.stripes||0;
-    await supabase.from('members').update({belt,stripes:isKidsBelt(belt)?0:stripes}).eq('id',id);
-    if(belt!==ob||(isKidsBelt(belt)?0:stripes)!==os){
-      await supabase.from('promotions').insert({member_id:id,member_name:m.name,old_belt:ob,old_stripes:os,new_belt:belt,new_stripes:isKidsBelt(belt)?0:stripes,promoted_by:'admin'});
+    const newStripes=isKidsBelt(belt)?0:stripes;
+    await adminUpdate(id,{belt,stripes:newStripes});
+    if(belt!==ob||newStripes!==os){
+      await supabase.from('promotions').insert({member_id:id,member_name:m.name,old_belt:ob,old_stripes:os,new_belt:belt,new_stripes:newStripes,promoted_by:'admin'});
     }
-    setMembers(ms=>ms.map(x=>x.id===id?{...x,belt,stripes:isKidsBelt(belt)?0:stripes}:x));
+    setMembers(ms=>ms.map(x=>x.id===id?{...x,belt,stripes:newStripes}:x));
     setSv(false);
   }
   function openLogSession(){
@@ -280,18 +291,21 @@ function DetailModal({id,members,setMembers,onClose}){
   }
   async function setStat(s){
     setSv(true);const u={status:s};if(s==='active')u.last_payment=todayStr();
-    await supabase.from('members').update(u).eq('id',id);
-    await supabase.from('members').update(u).eq('primary_member_id',id);
+    await adminUpdate(id,u);
+    // Cascade to dependents
+    const deps=members.filter(x=>x.primary_member_id===id);
+    await Promise.all(deps.map(d=>adminUpdate(d.id,u)));
     setMembers(ms=>ms.map(x=>x.id===id||x.primary_member_id===id?{...x,...u}:x));
     setSv(false);onClose();
   }
   async function deleteMember(){
     if(!window.confirm(`Permanently delete ${m.name}?`))return;
     setSv(true);
-    await supabase.from('sessions').delete().eq('member_id',id);
-    await supabase.from('members').delete().eq('id',id);
-    setMembers(ms=>ms.filter(x=>x.id!==id));
-    setSv(false);onClose();
+    const res=await fetch('/api/member',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
+    const d=await res.json();
+    if(d.success){setMembers(ms=>ms.filter(x=>x.id!==id));onClose();}
+    else alert('Error: '+d.error);
+    setSv(false);
   }
   async function cancelSub(){
     if(!m.stripe_subscription_id){alert('No Stripe subscription ID on file.');return;}
@@ -315,7 +329,7 @@ function DetailModal({id,members,setMembers,onClose}){
     setSv(true);
     const updates={primary_member_id:selectedPrimary||null};
     if(selectedPrimary){const pm=members.find(x=>x.id===selectedPrimary);if(pm)updates.status=pm.status;}
-    await supabase.from('members').update(updates).eq('id',id);
+    await adminUpdate(id,updates);
     setMembers(ms=>ms.map(x=>x.id===id?{...x,...updates}:x));
     setSv(false);setShowLink(false);
   }
@@ -494,7 +508,7 @@ function PaymentsView({members,setMembers}){
   const sorted=[...members].sort((a,b)=>({overdue:0,pending:1,active:2,inactive:3}[a.status]-{overdue:0,pending:1,active:2,inactive:3}[b.status]));
   const od=members.filter(m=>m.status==='overdue').length;
   const [sv,setSv]=useState(null);
-  async function markPaid(id){setSv(id);const lp=todayStr();const nx=new Date();nx.setMonth(nx.getMonth()+1);await supabase.from('members').update({status:'active',last_payment:lp,next_payment_date:nx.toISOString().split('T')[0]}).eq('id',id);setMembers(ms=>ms.map(m=>m.id===id?{...m,status:'active',last_payment:lp}:m));setSv(null);}
+  async function markPaid(id){setSv(id);const lp=todayStr();const nx=new Date();nx.setMonth(nx.getMonth()+1);await adminUpdate(id,{status:'active',last_payment:lp,next_payment_date:nx.toISOString().split('T')[0]});setMembers(ms=>ms.map(m=>m.id===id?{...m,status:'active',last_payment:lp}:m));setSv(null);}
   return <>
     {od>0&&<div style={{background:'#1a0800',border:'1px solid #7a3300',borderRadius:8,padding:'14px 16px',marginBottom:14,color:ORG,fontSize:15,fontFamily:FB,fontWeight:700}}>{od} member{od!==1?'s':''} with overdue payments</div>}
     {sorted.map(m=>{
