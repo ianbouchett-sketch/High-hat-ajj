@@ -37,7 +37,6 @@ const fmtPrice=c=>'$'+(c/100).toFixed(2);
 const inpStyle={width:'100%',background:SURF,border:`1px solid ${BL}`,borderRadius:6,padding:'13px 16px',color:'#fff',fontSize:16,outline:'none',fontFamily:FB,WebkitAppearance:'none',colorScheme:'dark',boxSizing:'border-box'};
 
 function SLabel({ch}){return <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16}}><div style={{width:3,height:14,background:G,borderRadius:2,flexShrink:0}}/><span style={{color:G,fontSize:11,fontWeight:800,letterSpacing:2.5,textTransform:'uppercase',fontFamily:F}}>{ch}</span><div style={{flex:1,height:1,background:BL}}/></div>;}
-function Card({ch,style={}}){return <div style={{background:CARD,border:`1px solid ${BL}`,borderRadius:10,marginBottom:10,overflow:'hidden',...style}}>{ch}</div>}
 function GBtn({ch,onClick,style={},sm,disabled}){return <button onClick={onClick} disabled={disabled} style={{padding:sm?'8px 16px':'11px 22px',background:G,border:'none',borderRadius:6,color:'#000',fontWeight:800,fontSize:sm?12:14,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',opacity:disabled?.5:1,...style}}>{ch}</button>}
 function GhBtn({ch,onClick,style={}}){return <button onClick={onClick} style={{padding:'9px 16px',background:'transparent',border:`1px solid ${BL}`,borderRadius:6,color:'#777',fontSize:12,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',...style}}>{ch}</button>}
 function DBtn({ch,onClick,disabled,style={}}){return <button onClick={onClick} disabled={disabled} style={{padding:'9px 16px',background:'transparent',border:'1px solid #6a2020',borderRadius:6,color:RED,fontSize:12,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',opacity:disabled?.5:1,...style}}>{ch}</button>}
@@ -167,6 +166,10 @@ function DetailModal({id,members,setMembers,onClose}){
   const [uploading,setUploading]=useState(false);
   const [selectedPrimary,setSelectedPrimary]=useState(m?.primary_member_id||'');
   const [beltSaveMsg,setBeltSaveMsg]=useState('');
+  const [showMerge,setShowMerge]=useState(false);
+  const [mergeTarget,setMergeTarget]=useState('');
+  const [merging,setMerging]=useState(false);
+  const [mergeMsg,setMergeMsg]=useState('');
 
   if(!m)return null;
   const od=m.status==='overdue'&&m.last_payment?dOD(m.last_payment):0;
@@ -184,15 +187,23 @@ function DetailModal({id,members,setMembers,onClose}){
   async function saveBelt(){setSv(true);setBeltSaveMsg('');const ob=m.belt,os=m.stripes||0;const ns=isKidsBelt(belt)?0:stripes;const r=await adminUpdate(id,{belt,stripes:ns});if(r.error){setBeltSaveMsg('Error: '+r.error);setSv(false);return;}if(belt!==ob||ns!==os){await supabase.from('promotions').insert({member_id:id,member_name:m.name,old_belt:ob,old_stripes:os,new_belt:belt,new_stripes:ns,promoted_by:'admin'});}setMembers(ms=>ms.map(x=>x.id===id?{...x,belt,stripes:ns}:x));setBeltSaveMsg('Saved!');setTimeout(()=>setBeltSaveMsg(''),2000);setSv(false);}
   function openLogSession(){setLogSessionDate(todayStr());setShowLogSession(true);}
   async function confirmLogSession(){setSv(true);const res=await fetch('/api/log-session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({memberId:id,sessionDate:logSessionDate})});const data=await res.json();if(res.status===409){alert('A session is already logged for that date.');setSv(false);return;}if(data.session){const{data:fresh}=await supabase.from('members').select('sessions').eq('id',id).single();setMembers(ms=>ms.map(x=>x.id===id?{...x,sessions:fresh?.sessions||0}:x));setShowLogSession(false);}else alert('Error: '+(data.error||'Could not save session'));setSv(false);}
-  async function setStat(s){setSv(true);const u={status:s};if(s==='active')u.last_payment=todayStr();await adminUpdate(id,u);const deps=members.filter(x=>x.primary_member_id===id);await Promise.all(deps.map(d=>adminUpdate(d.id,u)));setMembers(ms=>ms.map(x=>x.id===id||x.primary_member_id===id?{...x,...u}:x));setSv(false);onClose();}
+  async function setStat(s){setSv(true);const u={status:s};if(s==='active'&&m.status!=='active')u.last_payment=todayStr();await adminUpdate(id,u);const deps=members.filter(x=>x.primary_member_id===id);await Promise.all(deps.map(d=>adminUpdate(d.id,u)));setMembers(ms=>ms.map(x=>x.id===id||x.primary_member_id===id?{...x,...u}:x));setSv(false);}
   async function deleteMember(){if(!window.confirm(`Permanently delete ${m.name}?`))return;setSv(true);const res=await fetch('/api/member',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});const d=await res.json();if(d.success){setMembers(ms=>ms.filter(x=>x.id!==id));onClose();}else alert('Error: '+d.error);setSv(false);}
   async function cancelSub(){if(!m.stripe_subscription_id){alert('No Stripe subscription ID on file.');return;}setCanc(true);const r=await fetch('/api/cancel-subscription',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subscriptionId:m.stripe_subscription_id,memberId:id})});const d=await r.json();if(d.success){setMembers(ms=>ms.map(x=>x.id===id?{...x,status:'inactive',stripe_subscription_id:null}:x));onClose();}else alert('Error: '+d.error);setCanc(false);setConf(false);}
   async function generatePayLink(){if(!payAmount||isNaN(payAmount)||+payAmount<1)return;setGenLoading(true);setPayErrMsg('');setGeneratedLink(null);const res=await fetch('/api/create-payment-link',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:+payAmount,memberId:id,memberName:m.name,memberEmail:m.email})});const data=await res.json();if(data.error==='ACTIVE_SUBSCRIPTION'){setPayErrMsg(data.message);setShowPayLink(false);}else if(data.url){setGeneratedLink(data.url);}else{setPayErrMsg(data.error||'Unknown error');}setGenLoading(false);}
   async function updateRate(){if(!newRate||isNaN(newRate)||+newRate<1)return;setRateUpdating(true);setPayErrMsg('');const res=await fetch('/api/update-subscription-rate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({memberId:id,newAmount:+newRate})});const d=await res.json();if(d.success){const rateCents=Math.round(+newRate*100);setMembers(ms=>ms.map(x=>x.id===id?{...x,monthly_rate:rateCents}:x));setShowUpdateRate(false);setNewRate('');}else{setPayErrMsg(d.error||'Failed to update rate.');}setRateUpdating(false);}
   async function savePrimaryLink(){setSv(true);const updates={primary_member_id:selectedPrimary||null};if(selectedPrimary){const pm=members.find(x=>x.id===selectedPrimary);if(pm)updates.status=pm.status;}await adminUpdate(id,updates);setMembers(ms=>ms.map(x=>x.id===id?{...x,...updates}:x));setSv(false);setShowLink(false);}
+  async function mergeAccounts(){
+    if(!mergeTarget)return;
+    setMerging(true);setMergeMsg('');
+    const res=await fetch('/api/merge-member',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fromId:id,toId:mergeTarget})});
+    const data=await res.json();
+    if(data.success){setMembers(ms=>ms.filter(x=>x.id!==id));setShowMerge(false);onClose();}
+    else setMergeMsg(data.error||'Merge failed.');
+    setMerging(false);
+  }
 
   return <Modal open title="Member" onClose={onClose} ch={<>
-    {/* Identity card */}
     <div style={{background:SURF,borderRadius:10,padding:'14px 16px',marginBottom:20}}>
       <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:12}}>
         <div style={{position:'relative',flexShrink:0}}>
@@ -323,8 +334,12 @@ function DetailModal({id,members,setMembers,onClose}){
 
     <div style={{display:'flex',gap:8,marginBottom:10,flexWrap:'wrap'}}>
       <button onClick={openLogSession} disabled={sv} style={{flex:'1 1 120px',padding:14,background:'#0a1a0a',border:'1px solid #2a6a2a',borderRadius:8,color:GRN,fontSize:13,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>+ Session</button>
-      {m.status!=='active'?<button onClick={()=>setStat('active')} disabled={sv} style={{flex:'1 1 120px',padding:14,background:'#0a1a0a',border:'1px solid #2a6a2a',borderRadius:8,color:GRN,fontSize:13,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>Mark Active</button>
-      :<button onClick={()=>setStat('inactive')} disabled={sv} style={{flex:'1 1 120px',padding:14,background:SURF,border:`1px solid ${BL}`,borderRadius:8,color:'#555',fontSize:13,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>Deactivate</button>}
+      <div style={{flex:'1 1 120px',display:'flex',flexDirection:'column',gap:4}}>
+        <div style={{color:'#444',fontSize:9,fontFamily:F,letterSpacing:1.5,textTransform:'uppercase',fontWeight:700}}>Set Status</div>
+        <select value={m.status} onChange={e=>setStat(e.target.value)} disabled={sv} style={{background:SURF,border:`1px solid ${BL}`,borderRadius:6,padding:'10px 12px',color:'#fff',fontSize:13,fontFamily:F,fontWeight:800,cursor:'pointer',outline:'none',colorScheme:'dark'}}>
+          {['pending','active','overdue','inactive','walk_in'].map(s=><option key={s} value={s}>{s}</option>)}
+        </select>
+      </div>
     </div>
 
     {showSessionLog&&<div style={{background:SURF,border:`1px solid ${BL}`,borderRadius:10,padding:'16px',marginBottom:10}}>
@@ -349,6 +364,25 @@ function DetailModal({id,members,setMembers,onClose}){
       <div style={{display:'flex',gap:8}}><GhBtn ch="Cancel" onClick={()=>setShowLogSession(false)} style={{flex:1}}/><button onClick={confirmLogSession} disabled={sv} style={{flex:2,padding:'11px',background:'#1a4a1a',border:'1px solid #2a6a2a',borderRadius:6,color:GRN,fontSize:13,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',opacity:sv?.6:1}}>{sv?'Saving...':'Confirm Session'}</button></div>
     </div>}
 
+    {m.status==='walk_in'&&<div style={{background:SURF,borderRadius:8,padding:'14px 16px',marginBottom:12}}>
+      <SLabel ch="Merge with Auth Account"/>
+      <div style={{color:'#555',fontSize:12,fontFamily:FB,lineHeight:1.5,marginBottom:10}}>If this walk-in signed up and created a portal account separately, merge their records so sessions, waiver, and data transfer to the new account.</div>
+      {!showMerge&&<button onClick={()=>setShowMerge(true)} style={{width:'100%',padding:'10px',background:'#0a1020',border:'1px solid #2a5a8a',borderRadius:6,color:BLUE,fontSize:12,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>Merge Into Another Account</button>}
+      {showMerge&&<div>
+        <div style={{color:GD,fontSize:10,letterSpacing:1.5,textTransform:'uppercase',marginBottom:6,fontWeight:800,fontFamily:F}}>Select the account to merge INTO</div>
+        <select value={mergeTarget} onChange={e=>setMergeTarget(e.target.value)} style={{...inpStyle,marginBottom:8}}>
+          <option value=''>-- Select member --</option>
+          {members.filter(x=>x.id!==id&&x.email===m.email).map(x=><option key={x.id} value={x.id}>{x.name} — same email [{x.status}]</option>)}
+          {members.filter(x=>x.id!==id&&x.email!==m.email).map(x=><option key={x.id} value={x.id}>{x.name} ({x.email}) [{x.status}]</option>)}
+        </select>
+        {mergeMsg&&<div style={{color:ORG,fontSize:12,fontFamily:FB,marginBottom:8}}>{mergeMsg}</div>}
+        <div style={{display:'flex',gap:8}}>
+          <GhBtn ch="Cancel" onClick={()=>{setShowMerge(false);setMergeTarget('');setMergeMsg('');}} style={{flex:1}}/>
+          <button onClick={mergeAccounts} disabled={!mergeTarget||merging} style={{flex:2,padding:'10px',background:'#0a1020',border:'1px solid #2a5a8a',borderRadius:6,color:BLUE,fontSize:12,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',opacity:!mergeTarget||merging?.6:1}}>{merging?'Merging...':'Merge Records'}</button>
+        </div>
+      </div>}
+    </div>}
+
     <div style={{display:'flex',gap:8,marginTop:4}}>
       <GhBtn ch="Close" onClick={onClose} style={{flex:1,textAlign:'center'}}/>
       <DBtn ch="Delete" onClick={deleteMember} style={{flex:1,textAlign:'center'}} disabled={sv}/>
@@ -365,8 +399,7 @@ function PaymentsView({members,setMembers}){
   return <>
     {od>0&&<div style={{background:'#1a0800',border:'1px solid #7a3300',borderRadius:8,padding:'14px 16px',marginBottom:14,color:ORG,fontSize:15,fontFamily:FB,fontWeight:700}}>{od} member{od!==1?'s':''} with overdue payments</div>}
     {sorted.map(m=>{
-      const isOD=m.status==='overdue';
-      const od2=isOD&&m.last_payment?dOD(m.last_payment):0;
+      const isOD=m.status==='overdue';const od2=isOD&&m.last_payment?dOD(m.last_payment):0;
       const nx=m.last_payment?new Date(m.last_payment):null;if(nx)nx.setMonth(nx.getMonth()+1);
       return <div key={m.id} style={{background:isOD?'#100800':CARD,border:`1px solid ${isOD?'#4a2000':BL}`,borderRadius:10,marginBottom:8,padding:'16px 18px'}}>
         <div style={{display:'flex',alignItems:'center',gap:12}}>
@@ -394,12 +427,9 @@ function PaymentsView({members,setMembers}){
 
 // ---- SCHEDULE ----
 function ScheduleView({schedule,setSchedule}){
-  const [mode,setMode]=useState('week');
-  const [modal,setModal]=useState(null);
+  const [mode,setMode]=useState('week');const [modal,setModal]=useState(null);
   const [form,setForm]=useState({day_of_week:1,start_time:'18:30',class_name:'',type:'Gi',instructor:''});
-  const [sv,setSv]=useState(false);
-  const [confirmDelId,setConfirmDelId]=useState(null);
-  const [confirmDelName,setConfirmDelName]=useState('');
+  const [sv,setSv]=useState(false);const [confirmDelId,setConfirmDelId]=useState(null);const [confirmDelName,setConfirmDelName]=useState('');
   async function openEdit(c){setModal(c?c.id:'new');setForm(c?{day_of_week:c.day_of_week,start_time:c.start_time,class_name:c.class_name,type:c.type,instructor:c.instructor||''}:{day_of_week:1,start_time:'18:30',class_name:'',type:'Gi',instructor:''});}
   async function save(){if(!form.class_name.trim())return;setSv(true);const payload={...form,day_of_week:+form.day_of_week};if(modal==='new'){const res=await fetch('/api/schedule',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const d=await res.json();if(d.class)setSchedule(s=>[...s,d.class].sort((a,b)=>a.day_of_week-b.day_of_week||a.start_time.localeCompare(b.start_time)));else alert('Error: '+(d.error||'Unknown'));}else{const res=await fetch('/api/schedule',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:modal,...payload})});const d=await res.json();if(d.success)setSchedule(s=>s.map(c=>c.id===modal?{...c,...payload}:c));else alert('Error: '+(d.error||'Unknown'));}setSv(false);setModal(null);}
   function del(id,name){setConfirmDelId(id);setConfirmDelName(name);}
@@ -433,8 +463,7 @@ function ScheduleView({schedule,setSchedule}){
     </div>;}):sorted.map(c=><div key={c.id} style={{background:CARD,border:`1px solid ${BL}`,borderRadius:10,marginBottom:6,padding:'12px 18px',display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
       <span style={{color:GD,fontSize:12,fontFamily:F,fontWeight:700,width:30,flexShrink:0}}>{DAYSS[c.day_of_week]?.toUpperCase()}</span>
       <span style={{color:G,fontSize:16,fontWeight:900,fontFamily:FN,flexShrink:0}}>{c.start_time.slice(0,5)}</span>
-      <span style={{color:'#fff',fontSize:14,fontFamily:FB}}>{c.class_name}</span>
-      <TPill type={c.type}/>
+      <span style={{color:'#fff',fontSize:14,fontFamily:FB}}>{c.class_name}</span><TPill type={c.type}/>
       {c.instructor&&<span style={{color:'#555',fontSize:13,fontFamily:FB}}>{c.instructor}</span>}
       <div style={{marginLeft:'auto',display:'flex',gap:5}}>
         <button onClick={()=>openEdit(c)} style={{padding:'4px 10px',background:'transparent',border:`1px solid ${BL}`,borderRadius:4,color:'#555',fontSize:10,fontFamily:F,cursor:'pointer'}}>Edit</button>
@@ -453,11 +482,8 @@ function ScheduleView({schedule,setSchedule}){
 
 // ---- PRODUCTS ----
 function ProductsView({products,setProducts,members}){
-  const [modal,setModal]=useState(null);
-  const [form,setForm]=useState({name:'',description:'',price_cents:'',inventory:''});
-  const [chargeModal,setChargeModal]=useState(null);
-  const [chargeMem,setChargeMem]=useState('');
-  const [sv,setSv]=useState(false);
+  const [modal,setModal]=useState(null);const [form,setForm]=useState({name:'',description:'',price_cents:'',inventory:''});
+  const [chargeModal,setChargeModal]=useState(null);const [chargeMem,setChargeMem]=useState('');const [sv,setSv]=useState(false);
   async function saveP(){if(!form.name.trim()||!form.price_cents)return;setSv(true);const p={name:form.name.trim(),description:form.description.trim(),price_cents:Math.round(parseFloat(form.price_cents)*100),inventory:form.inventory?parseInt(form.inventory):null,active:true};if(modal==='new'){const{data}=await supabase.from('products').insert(p).select().single();if(data)setProducts(ps=>[...ps,data]);}else{await supabase.from('products').update(p).eq('id',modal);setProducts(ps=>ps.map(x=>x.id===modal?{...x,...p}:x));}setSv(false);setModal(null);}
   async function archiveP(id){await supabase.from('products').update({active:false}).eq('id',id);setProducts(ps=>ps.filter(x=>x.id!==id));}
   function chargeViaStripe(){if(!chargeMem)return;const m=members.find(x=>x.id===chargeMem);if(!m?.stripe_customer_id){alert('No Stripe Customer ID for this member.');return;}window.open(`https://dashboard.stripe.com/customers/${m.stripe_customer_id}`,'_blank');setChargeModal(null);}
@@ -508,7 +534,7 @@ function FinancialMetrics({members}){
   const overdueRevenue=overdue.filter(m=>m.monthly_rate>0).reduce((s,m)=>s+(m.monthly_rate||0),0)/100;
   const noRateCount=active.length-withRate.length;
   const trained=active.filter(m=>(m.sessions||0)>0);
-  const retained=trained.filter(m=>{if(!m.joined_at)return false;const months=(now-new Date(m.joined_at))/(1000*60*60*24*30.4);return months>=1;});
+  const retained=trained.filter(m=>{if(!m.joined_at)return false;return(now-new Date(m.joined_at))/(1000*60*60*24*30.4)>=1;});
   const retentionRate=trained.length>0?retained.length/trained.length:0;
   const retentionPct=Math.round(retentionRate*100);
   const churn=Math.max(0.02,1-retentionRate);
@@ -521,7 +547,7 @@ function FinancialMetrics({members}){
   const fmtM=n=>`$${n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
   const cs={background:CARD,border:`1px solid ${BL}`,borderRadius:10,padding:20,marginBottom:14};
   return <>
-    <div style={{...cs,background:`linear-gradient(135deg,${CARD},${GK})`,border:`1px solid ${G}30`,marginBottom:14}}>
+    <div style={{...cs,background:`linear-gradient(135deg,${CARD},${GK})`,border:`1px solid ${G}30`}}>
       <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}>
         <div>
           <div style={{color:'#444',fontSize:11,textTransform:'uppercase',letterSpacing:2,fontWeight:700,fontFamily:F,marginBottom:6}}>Monthly Recurring Revenue</div>
@@ -555,14 +581,13 @@ function FinancialMetrics({members}){
           <div style={{marginTop:8,height:3,background:'#1a1a00',borderRadius:2}}><div style={{height:3,borderRadius:2,background:GRN,width:`${Math.min(100,avgTenureMonths/24*100)}%`}}/></div>
         </div>
       </div>
-      <div style={{marginTop:12,color:'#333',fontSize:11,fontFamily:FB,borderTop:`1px solid ${BL}`,paddingTop:10}}>Numbers improve as more members have rates set and training history builds up. Set a rate by generating a payment link.</div>
+      <div style={{marginTop:12,color:'#333',fontSize:11,fontFamily:FB,borderTop:`1px solid ${BL}`,paddingTop:10}}>Numbers improve as more members have rates set. Set a rate by generating a payment link.</div>
     </div>
   </>;
 }
 
 function RecentPromotions(){
-  const [promos,setPromos]=useState([]);
-  const [loaded,setLoaded]=useState(false);
+  const [promos,setPromos]=useState([]);const [loaded,setLoaded]=useState(false);
   useEffect(()=>{supabase.from('promotions').select('*').order('promoted_at',{ascending:false}).limit(15).then(({data})=>{setPromos(data||[]);setLoaded(true);});},[]);
   const fmt=d=>new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
   const bc=b=>({White:'#e8e8e0',Grey:'#888',Yellow:'#c9a227',Orange:'#c97316',Green:'#2a6a2a',Blue:'#1a3a6e',Purple:'#3e1460',Brown:'#4a2000',Black:'#222'}[b]||'#444');

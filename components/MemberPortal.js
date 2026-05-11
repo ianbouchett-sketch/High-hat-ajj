@@ -115,6 +115,15 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
   const [promoBelt,setPromoBelt]=useState('');
   const [promoStripes,setPromoStripes]=useState(0);
   const [promoSaving,setPromoSaving]=useState(false);
+  const [posts,setPosts]=useState([]);
+  const [postsLoaded,setPostsLoaded]=useState(false);
+  const [postText,setPostText]=useState('');
+  const [postImage,setPostImage]=useState(null);
+  const [postImagePreview,setPostImagePreview]=useState(null);
+  const [postReactions,setPostReactions]=useState({});
+  const [postUploading,setPostUploading]=useState(false);
+  const [hashtagFilter,setHashtagFilter]=useState(null);
+  const [confirmDelPost,setConfirmDelPost]=useState(null);
 
   useEffect(()=>{
     if(initialMember?.status==='pending'&&initialMember?.stripe_checkout_session){
@@ -122,7 +131,6 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
     }
   },[]);
 
-  // Refresh community data when tab becomes visible again (handles admin deleting promos)
   useEffect(()=>{
     function onVisible(){
       if(document.visibilityState==='visible'){
@@ -169,6 +177,68 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
     }
     loadCommunity();
   },[view,refreshKey]);
+
+  useEffect(()=>{
+    if(view!=='feed')return;
+    loadFeed();
+  },[view,hashtagFilter]);
+
+  async function loadFeed(){
+    setPostsLoaded(false);
+    const url='/api/posts'+(hashtagFilter?`?hashtag=${hashtagFilter}`:'');
+    const res=await fetch(url);
+    const data=await res.json();
+    const ps=data.posts||[];
+    setPosts(ps);
+    const rMap={};
+    ps.forEach(p=>{
+      const reacts=p.post_reactions||[];
+      rMap[p.id]={count:reacts.length,liked:reacts.some(r=>r.member_id===member.id)};
+    });
+    setPostReactions(rMap);
+    setPostsLoaded(true);
+  }
+
+  async function submitPost(){
+    if(!postText.trim()&&!postImage)return;
+    setPostUploading(true);
+    let image_url=null;
+    if(postImage){
+      const ext=postImage.name.split('.').pop();
+      const path=`posts/${member.id}/${Date.now()}.${ext}`;
+      const{error:upErr}=await supabase.storage.from('avatars').upload(path,postImage,{upsert:true});
+      if(!upErr){const{data:{publicUrl}}=supabase.storage.from('avatars').getPublicUrl(path);image_url=publicUrl;}
+    }
+    const res=await fetch('/api/posts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({member_id:member.id,member_name:member.name,content:postText.trim(),image_url,post_type:'member'})});
+    const data=await res.json();
+    if(data.post){
+      setPosts(ps=>[{...data.post,post_reactions:[]},...ps]);
+      setPostReactions(r=>({...r,[data.post.id]:{count:0,liked:false}}));
+      setPostText('');setPostImage(null);setPostImagePreview(null);
+      showT('Posted!');
+    }
+    setPostUploading(false);
+  }
+
+  async function togglePostReaction(postId,promotionId){
+    const cur=postReactions[postId]||{count:0,liked:false};
+    setPostReactions(r=>({...r,[postId]:{count:cur.liked?Math.max(0,cur.count-1):cur.count+1,liked:!cur.liked}}));
+    await fetch('/api/post-reactions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({post_id:postId,member_id:member.id,promotion_id:promotionId||null})});
+  }
+
+  async function deletePost(postId){
+    await fetch('/api/posts',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({post_id:postId,member_id:member.id,is_admin:false})});
+    setPosts(ps=>ps.filter(p=>p.id!==postId));setConfirmDelPost(null);showT('Post deleted.');
+  }
+
+  function renderContent(text){
+    if(!text)return null;
+    const parts=text.split(/(#\w+)/g);
+    return parts.map((part,i)=>part.startsWith('#')
+      ?<span key={i} onClick={()=>{setHashtagFilter(part.slice(1));}} style={{color:BLUE,cursor:'pointer',fontWeight:700}}>{part}</span>
+      :<span key={i}>{part}</span>
+    );
+  }
 
   function goTo(id){
     if(id==='home')setRefreshKey(k=>k+1);
@@ -243,7 +313,7 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
   }
   async function signOut(){await supabase.auth.signOut();router.push('/login');}
 
-  const navs=[{id:'home',l:'Home',icon:'⌂'},{id:'journal',l:'Journal',icon:'✎'},{id:'schedule',l:'Schedule',icon:'◷'},{id:'profile',l:'Profile',icon:'◉'}];
+  const navs=[{id:'home',l:'Home',icon:'⌂'},{id:'feed',l:'Feed',icon:'◈'},{id:'journal',l:'Journal',icon:'✎'},{id:'schedule',l:'Schedule',icon:'◷'},{id:'profile',l:'Profile',icon:'◉'}];
 
   return <div style={{minHeight:'100vh',background:BG,color:'#fff',fontFamily:FB}}>
     {toast&&<div style={{position:'fixed',top:16,left:'50%',transform:'translateX(-50%)',background:'#1a1400',border:`1px solid ${G}`,borderRadius:20,padding:'11px 20px',color:G,fontSize:14,fontWeight:800,fontFamily:F,letterSpacing:1,zIndex:300,whiteSpace:'nowrap',boxShadow:'0 4px 20px rgba(0,0,0,.5)'}}>{toast}</div>}
@@ -406,6 +476,71 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
         </div></Card>}
       </div>}
 
+      {view==='feed'&&<div>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14,flexWrap:'wrap',gap:8}}>
+          <div style={{fontWeight:800,fontSize:26,color:'#fff',fontFamily:FB}}>Mat Feed</div>
+          {hashtagFilter&&<button onClick={()=>setHashtagFilter(null)} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 14px',background:GK,border:`1px solid ${G}`,borderRadius:20,color:G,fontSize:12,fontWeight:800,fontFamily:F,letterSpacing:1,cursor:'pointer'}}>#{hashtagFilter} ×</button>}
+        </div>
+
+        {/* Composer */}
+        <div style={{background:CARD,border:`1px solid ${BL}`,borderRadius:10,padding:'16px 18px',marginBottom:14}}>
+          <div style={{display:'flex',gap:12,alignItems:'flex-start',marginBottom:10}}>
+            <div style={{width:36,height:36,borderRadius:8,background:member.avatar_color||GK,border:`1.5px solid ${G}40`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:800,color:G,fontFamily:F,flexShrink:0}}>{ini(member.name)}</div>
+            <textarea value={postText} onChange={e=>setPostText(e.target.value)} placeholder="Share something with the academy... use #hashtags" rows={3} style={{flex:1,background:SURF,border:`1px solid ${BL}`,borderRadius:6,padding:'10px 14px',color:'#fff',fontSize:14,outline:'none',fontFamily:FB,resize:'vertical',minHeight:70,colorScheme:'dark',boxSizing:'border-box',width:'100%'}}/>
+          </div>
+          {postImagePreview&&<div style={{marginBottom:10,position:'relative',display:'inline-block'}}>
+            <img src={postImagePreview} alt="preview" style={{maxWidth:200,maxHeight:150,borderRadius:6,objectFit:'cover',border:`1px solid ${BL}`}}/>
+            <button onClick={()=>{setPostImage(null);setPostImagePreview(null);}} style={{position:'absolute',top:-6,right:-6,width:20,height:20,borderRadius:'50%',background:'#3a0a0a',border:'1px solid #7a2020',color:'#ff6666',fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>×</button>
+          </div>}
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <label style={{display:'flex',alignItems:'center',gap:5,padding:'7px 12px',background:'transparent',border:`1px solid ${BL}`,borderRadius:6,color:'#555',fontSize:11,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>
+              📷 Photo
+              <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const f=e.target.files[0];if(f){setPostImage(f);setPostImagePreview(URL.createObjectURL(f));}}}/>
+            </label>
+            <button onClick={submitPost} disabled={postUploading||(!postText.trim()&&!postImage)} style={{marginLeft:'auto',padding:'8px 18px',background:G,border:'none',borderRadius:6,color:'#000',fontWeight:800,fontSize:13,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',opacity:postUploading||(!postText.trim()&&!postImage)?.5:1}}>{postUploading?'Posting...':'Post'}</button>
+          </div>
+        </div>
+
+        {!postsLoaded&&<div style={{color:'#333',fontSize:14,fontFamily:FB,textAlign:'center',padding:'40px 0'}}>Loading...</div>}
+        {postsLoaded&&posts.length===0&&<div style={{color:'#333',fontSize:14,fontFamily:FB,textAlign:'center',padding:'40px 0'}}>Nothing posted yet. Be the first!</div>}
+        {posts.map(p=>{
+          const isPromo=p.post_type==='promotion';
+          const isMine=p.member_id===member.id;
+          const react=postReactions[p.id]||{count:0,liked:false};
+          const ago=d=>{const diff=Math.floor((new Date()-new Date(d))/86400000);if(diff===0){const hrs=Math.floor((new Date()-new Date(d))/3600000);return hrs===0?'Just now':`${hrs}h ago`;}return diff===1?'Yesterday':`${diff}d ago`;};
+          return <div key={p.id} style={{background:CARD,border:`1px solid ${isPromo?G+'30':BL}`,borderRadius:10,marginBottom:10,overflow:'hidden'}}>
+            {isPromo&&<div style={{height:2,background:`linear-gradient(90deg,${G},${GD})`}}/>}
+            <div style={{padding:'14px 16px'}}>
+              <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+                <div style={{width:36,height:36,borderRadius:8,background:GK,border:`1.5px solid ${GD}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:800,color:G,fontFamily:F,flexShrink:0}}>{ini(p.member_name)}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{color:'#fff',fontSize:14,fontWeight:700,fontFamily:FB}}>{p.member_id===member.id?'You':p.member_name}</div>
+                  <div style={{color:'#444',fontSize:11,fontFamily:F,letterSpacing:.5}}>{ago(p.created_at)}{isPromo&&<span style={{color:G,marginLeft:6,fontWeight:800}}>PROMOTION</span>}</div>
+                </div>
+                {isMine&&<>
+                  {confirmDelPost===p.id
+                    ?<div style={{display:'flex',gap:6,alignItems:'center'}}>
+                      <span style={{color:'#888',fontSize:11,fontFamily:FB}}>Delete?</span>
+                      <button onClick={()=>deletePost(p.id)} style={{padding:'2px 8px',background:'#3a0a0a',border:'1px solid #7a2020',borderRadius:4,color:'#ff6666',fontSize:10,fontFamily:F,cursor:'pointer'}}>Yes</button>
+                      <button onClick={()=>setConfirmDelPost(null)} style={{padding:'2px 8px',background:'transparent',border:`1px solid ${BL}`,borderRadius:4,color:'#555',fontSize:10,fontFamily:F,cursor:'pointer'}}>No</button>
+                    </div>
+                    :<button onClick={()=>setConfirmDelPost(p.id)} style={{padding:'3px 8px',background:'transparent',border:`1px solid ${BL}`,borderRadius:4,color:'#444',fontSize:10,fontFamily:F,cursor:'pointer'}}>×</button>
+                  }
+                </>}
+              </div>
+              {p.content&&<div style={{color:'#ccc',fontSize:15,fontFamily:FB,lineHeight:1.6,marginBottom:p.image_url?10:0}}>{renderContent(p.content)}</div>}
+              {p.image_url&&<img src={p.image_url} alt="post" style={{width:'100%',maxHeight:320,objectFit:'cover',borderRadius:6,display:'block'}}/>}
+            </div>
+            <div style={{borderTop:`1px solid ${BL}`,padding:'8px 16px',display:'flex',alignItems:'center'}}>
+              <button onClick={()=>togglePostReaction(p.id,p.promotion_id)} style={{display:'flex',alignItems:'center',gap:5,padding:'5px 12px',background:react.liked?GK:'transparent',border:`1px solid ${react.liked?G:BL}`,borderRadius:20,cursor:'pointer'}}>
+                <span style={{fontSize:15}}>👊</span>
+                <span style={{color:react.liked?G:'#555',fontSize:11,fontWeight:800,fontFamily:F,letterSpacing:.5}}>OSS{react.count>0?` ${react.count}`:''}</span>
+              </button>
+            </div>
+          </div>;
+        })}
+      </div>}
+
       {view==='journal'&&<div>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',marginBottom:18}}>
           <div>
@@ -460,7 +595,7 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
                       <TPill type={c.type}/>
                       {c.instructor&&<span style={{color:'#555',fontSize:13,fontFamily:FB}}>{c.instructor}</span>}
                       <button onClick={()=>toggleAttendance(c.id)} style={{marginLeft:'auto',padding:'5px 12px',background:going?G:'transparent',border:`1px solid ${going?G:BL}`,borderRadius:20,color:going?'#000':'#555',fontSize:11,fontWeight:800,fontFamily:F,letterSpacing:.5,cursor:'pointer',flexShrink:0}}>
-                        {going?'✓ Going':'I\'ll be there'}
+                        {going?'✓ Going':"I'll be there"}
                       </button>
                     </div>
                     {attendees.length>0&&<div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap',paddingTop:6,borderTop:`1px solid ${BL}`}}>
