@@ -75,7 +75,6 @@ function StatBar({stats,onSessionsClick}){
   </div>;
 }
 
-// ---- ROSTER ----
 function RosterView({members,setMembers,openDetail}){
   const [srch,setSrch]=useState('');
   const [filt,setFilt]=useState('all');
@@ -135,7 +134,6 @@ function RosterView({members,setMembers,openDetail}){
   </>;
 }
 
-// ---- DETAIL MODAL ----
 function DetailModal({id,members,setMembers,onClose}){
   const m=members.find(x=>x.id===id);
   const [belt,setBelt]=useState(m?.belt||'White');
@@ -183,7 +181,21 @@ function DetailModal({id,members,setMembers,onClose}){
   async function deleteSession(sessionId){await fetch('/api/log-session',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,memberId:id})});const{data:fresh}=await supabase.from('members').select('sessions').eq('id',id).single();setMembers(ms=>ms.map(x=>x.id===id?{...x,sessions:fresh?.sessions||0}:x));setSessionLog(sl=>sl.filter(s=>s.id!==sessionId));setConfirmDelSession(null);}
   async function saveInfo(){setSv(true);const r=await adminUpdate(id,{name:editName,phone:editPhone,date_of_birth:editDOB||null});if(r.error){alert('Save failed: '+r.error);setSv(false);return;}setMembers(ms=>ms.map(x=>x.id===id?{...x,name:editName,phone:editPhone,date_of_birth:editDOB||null}:x));setSv(false);setShowEditInfo(false);}
   async function sendPasswordReset(){if(!m.email)return;await supabase.auth.resetPasswordForEmail(m.email,{redirectTo:'https://high-hat-ajj.vercel.app/reset-password'});setPwResetSent(true);setTimeout(()=>setPwResetSent(false),4000);}
-  async function uploadAvatar(file){if(!file)return;setUploading(true);const ext=file.name.split('.').pop();const path=`${id}/avatar.${ext}`;const{error:upErr}=await supabase.storage.from('avatars').upload(path,file,{upsert:true});if(!upErr){const{data:{publicUrl}}=supabase.storage.from('avatars').getPublicUrl(path);await adminUpdate(id,{avatar_url:publicUrl});setMembers(ms=>ms.map(x=>x.id===id?{...x,avatar_url:publicUrl}:x));}setUploading(false);}
+  async function uploadAvatar(file){
+    if(!file)return;
+    setUploading(true);
+    const fd=new FormData();
+    fd.append('file',file);
+    fd.append('memberId',id);
+    const res=await fetch('/api/upload-avatar',{method:'POST',body:fd});
+    const data=await res.json();
+    if(data.error){
+      alert('Photo upload failed: '+data.error);
+    } else {
+      setMembers(ms=>ms.map(x=>x.id===id?{...x,avatar_url:data.publicUrl}:x));
+    }
+    setUploading(false);
+  }
   async function saveBelt(){setSv(true);setBeltSaveMsg('');const ob=m.belt,os=m.stripes||0;const ns=isKidsBelt(belt)?0:stripes;const r=await adminUpdate(id,{belt,stripes:ns});if(r.error){setBeltSaveMsg('Error: '+r.error);setSv(false);return;}if(belt!==ob||ns!==os){await supabase.from('promotions').insert({member_id:id,member_name:m.name,old_belt:ob,old_stripes:os,new_belt:belt,new_stripes:ns,promoted_by:'admin'});}setMembers(ms=>ms.map(x=>x.id===id?{...x,belt,stripes:ns}:x));setBeltSaveMsg('Saved!');setTimeout(()=>setBeltSaveMsg(''),2000);setSv(false);}
   function openLogSession(){setLogSessionDate(todayStr());setShowLogSession(true);}
   async function confirmLogSession(){setSv(true);const res=await fetch('/api/log-session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({memberId:id,sessionDate:logSessionDate})});const data=await res.json();if(res.status===409){alert('A session is already logged for that date.');setSv(false);return;}if(data.session){const{data:fresh}=await supabase.from('members').select('sessions').eq('id',id).single();setMembers(ms=>ms.map(x=>x.id===id?{...x,sessions:fresh?.sessions||0}:x));setShowLogSession(false);}else alert('Error: '+(data.error||'Could not save session'));setSv(false);}
@@ -390,7 +402,6 @@ function DetailModal({id,members,setMembers,onClose}){
   </>}/>;
 }
 
-// ---- PAYMENTS TAB ----
 function PaymentsView({members,setMembers}){
   const sorted=[...members].sort((a,b)=>({overdue:0,pending:1,active:2,inactive:3}[a.status]-{overdue:0,pending:1,active:2,inactive:3}[b.status]));
   const od=members.filter(m=>m.status==='overdue').length;
@@ -425,7 +436,6 @@ function PaymentsView({members,setMembers}){
   </>;
 }
 
-// ---- SCHEDULE ----
 function ScheduleView({schedule,setSchedule}){
   const [mode,setMode]=useState('week');const [modal,setModal]=useState(null);
   const [form,setForm]=useState({day_of_week:1,start_time:'18:30',class_name:'',type:'Gi',instructor:''});
@@ -480,7 +490,6 @@ function ScheduleView({schedule,setSchedule}){
   </>;
 }
 
-// ---- PRODUCTS ----
 function ProductsView({products,setProducts,members}){
   const [modal,setModal]=useState(null);const [form,setForm]=useState({name:'',description:'',price_cents:'',inventory:''});
   const [chargeModal,setChargeModal]=useState(null);const [chargeMem,setChargeMem]=useState('');const [sv,setSv]=useState(false);
@@ -523,7 +532,6 @@ function ProductsView({products,setProducts,members}){
   </>;
 }
 
-// ---- ANALYTICS ----
 function FinancialMetrics({members}){
   const now=new Date();
   const active=members.filter(m=>m.status==='active');
@@ -673,7 +681,6 @@ function AnalyticsView({members}){
   </>;
 }
 
-// ---- ROOT ----
 export default function AdminApp({initialMembers,initialSchedule,initialProducts}){
   const [members,setMembers]=useState(initialMembers);
   const [schedule,setSchedule]=useState(initialSchedule);
