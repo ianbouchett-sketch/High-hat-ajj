@@ -65,6 +65,10 @@ function Logo(){
     <div><div style={{fontWeight:800,fontSize:15,letterSpacing:2.5,color:G,textTransform:'uppercase',fontFamily:F,lineHeight:1}}>High Hat</div><div style={{fontSize:9,color:'#555',letterSpacing:2,textTransform:'uppercase',fontFamily:F}}>American Jiu Jitsu</div></div>
   </div>;
 }
+function Av({m,size=36,radius=8}){
+  if(m?.avatar_url)return <img src={m.avatar_url} alt={m?.name||''} style={{width:size,height:size,borderRadius:radius,objectFit:'cover',flexShrink:0,border:`1.5px solid ${G}30`}}/>;
+  return <div style={{width:size,height:size,borderRadius:radius,background:GK,border:`1.5px solid ${G}40`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:Math.round(size*0.38),fontWeight:800,color:G,fontFamily:F,flexShrink:0}}>{ini(m?.name)}</div>;
+}
 function StatBar({stats,onSessionsClick}){
   return <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',borderBottom:`1px solid ${BL}`,background:SURF}}>
     {stats.map((s,i)=>{const isSess=s.l==='Sessions';return <div key={s.l} onClick={isSess?onSessionsClick:undefined} style={{padding:'14px 12px',borderRight:i<3?`1px solid ${BL}`:'none',textAlign:'center',cursor:isSess?'pointer':'default'}}>
@@ -75,6 +79,7 @@ function StatBar({stats,onSessionsClick}){
   </div>;
 }
 
+// ---- ROSTER ----
 function RosterView({members,setMembers,openDetail}){
   const [srch,setSrch]=useState('');
   const [filt,setFilt]=useState('all');
@@ -103,7 +108,7 @@ function RosterView({members,setMembers,openDetail}){
       const sc=statusColors[m.status]||'#444';
       const od=m.status==='overdue'&&m.last_payment?dOD(m.last_payment):0;
       return <div key={m.id} onClick={()=>openDetail(m.id)} style={{background:CARD,border:`1px solid ${BL}`,borderRadius:10,marginBottom:8,cursor:'pointer',display:'flex',alignItems:'center',gap:14,padding:'14px 18px'}}>
-        <div style={{width:44,height:44,borderRadius:8,background:GK,border:`2px solid ${GD}`,display:'flex',alignItems:'center',justifyContent:'center',color:G,fontSize:14,fontWeight:800,fontFamily:F,flexShrink:0}}>{ini(m.name)}</div>
+        <Av m={m} size={44} radius={8}/>
         <div style={{flex:1,minWidth:0}}>
           <div style={{color:'#fff',fontSize:17,fontWeight:700,fontFamily:FB,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{m.name}</div>
           <div style={{marginTop:5}}><BB belt={m.belt||'White'} stripes={m.stripes||0}/></div>
@@ -134,6 +139,7 @@ function RosterView({members,setMembers,openDetail}){
   </>;
 }
 
+// ---- DETAIL MODAL ----
 function DetailModal({id,members,setMembers,onClose}){
   const m=members.find(x=>x.id===id);
   const [belt,setBelt]=useState(m?.belt||'White');
@@ -182,18 +188,12 @@ function DetailModal({id,members,setMembers,onClose}){
   async function saveInfo(){setSv(true);const r=await adminUpdate(id,{name:editName,phone:editPhone,date_of_birth:editDOB||null});if(r.error){alert('Save failed: '+r.error);setSv(false);return;}setMembers(ms=>ms.map(x=>x.id===id?{...x,name:editName,phone:editPhone,date_of_birth:editDOB||null}:x));setSv(false);setShowEditInfo(false);}
   async function sendPasswordReset(){if(!m.email)return;await supabase.auth.resetPasswordForEmail(m.email,{redirectTo:'https://high-hat-ajj.vercel.app/reset-password'});setPwResetSent(true);setTimeout(()=>setPwResetSent(false),4000);}
   async function uploadAvatar(file){
-    if(!file)return;
-    setUploading(true);
-    const fd=new FormData();
-    fd.append('file',file);
-    fd.append('memberId',id);
+    if(!file)return;setUploading(true);
+    const fd=new FormData();fd.append('file',file);fd.append('memberId',id);
     const res=await fetch('/api/upload-avatar',{method:'POST',body:fd});
     const data=await res.json();
-    if(data.error){
-      alert('Photo upload failed: '+data.error);
-    } else {
-      setMembers(ms=>ms.map(x=>x.id===id?{...x,avatar_url:data.publicUrl}:x));
-    }
+    if(data.error){alert('Photo upload failed: '+data.error);}
+    else{setMembers(ms=>ms.map(x=>x.id===id?{...x,avatar_url:data.publicUrl}:x));}
     setUploading(false);
   }
   async function saveBelt(){setSv(true);setBeltSaveMsg('');const ob=m.belt,os=m.stripes||0;const ns=isKidsBelt(belt)?0:stripes;const r=await adminUpdate(id,{belt,stripes:ns});if(r.error){setBeltSaveMsg('Error: '+r.error);setSv(false);return;}if(belt!==ob||ns!==os){await supabase.from('promotions').insert({member_id:id,member_name:m.name,old_belt:ob,old_stripes:os,new_belt:belt,new_stripes:ns,promoted_by:'admin'});}setMembers(ms=>ms.map(x=>x.id===id?{...x,belt,stripes:ns}:x));setBeltSaveMsg('Saved!');setTimeout(()=>setBeltSaveMsg(''),2000);setSv(false);}
@@ -219,7 +219,7 @@ function DetailModal({id,members,setMembers,onClose}){
     <div style={{background:SURF,borderRadius:10,padding:'14px 16px',marginBottom:20}}>
       <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:12}}>
         <div style={{position:'relative',flexShrink:0}}>
-          {m.avatar_url?<img src={m.avatar_url} alt={m.name} style={{width:58,height:58,borderRadius:10,objectFit:'cover',border:`2px solid ${G}40`}}/>:<div style={{width:58,height:58,borderRadius:10,background:GK,border:`2px solid ${G}40`,display:'flex',alignItems:'center',justifyContent:'center',color:G,fontSize:18,fontWeight:800,fontFamily:F}}>{ini(m.name)}</div>}
+          <Av m={m} size={58} radius={10}/>
           <label style={{position:'absolute',bottom:-4,right:-4,width:20,height:20,background:G,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:11}}>{uploading?'…':'📷'}<input type="file" accept="image/*" style={{display:'none'}} onChange={e=>e.target.files[0]&&uploadAvatar(e.target.files[0])}/></label>
         </div>
         <div style={{flex:1}}>
@@ -274,7 +274,7 @@ function DetailModal({id,members,setMembers,onClose}){
 
       {hasActiveSub&&showUpdateRate&&<div style={{background:'#0a1000',border:'1px solid #2a4a00',borderRadius:8,padding:'14px',marginBottom:12}}>
         <div style={{color:GRN,fontSize:11,fontWeight:800,fontFamily:F,letterSpacing:1.5,textTransform:'uppercase',marginBottom:6}}>Update Billing Rate</div>
-        <div style={{color:'#555',fontSize:12,fontFamily:FB,marginBottom:10,lineHeight:1.5}}>Updates their existing Stripe subscription directly. Takes effect next billing cycle. No new checkout needed.</div>
+        <div style={{color:'#555',fontSize:12,fontFamily:FB,marginBottom:10,lineHeight:1.5}}>Updates their existing Stripe subscription directly. No new checkout needed.</div>
         <div style={{display:'flex',gap:8,alignItems:'center'}}>
           <div style={{color:'#fff',fontSize:18,fontWeight:800,fontFamily:F}}>$</div>
           <input value={newRate} onChange={e=>setNewRate(e.target.value)} placeholder={monthlyRate||'140'} type="number" style={{...inpStyle,flex:1,fontSize:15,padding:'10px 14px'}}/>
@@ -306,7 +306,6 @@ function DetailModal({id,members,setMembers,onClose}){
             <div style={{color:BLUE,fontSize:10,fontWeight:800,fontFamily:F,letterSpacing:1.5,textTransform:'uppercase',marginBottom:6}}>Payment Link Ready</div>
             <div style={{color:'#fff',fontSize:12,fontFamily:FB,wordBreak:'break-all',marginBottom:10}}>{generatedLink}</div>
             <button onClick={()=>navigator.clipboard.writeText(generatedLink)} style={{width:'100%',padding:'10px',background:G,border:'none',borderRadius:6,color:'#000',fontSize:12,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>Copy Link</button>
-            <div style={{color:'#444',fontSize:11,fontFamily:FB,marginTop:8,textAlign:'center'}}>Send this to {m.name}</div>
           </div>}
           {!generatedLink&&!payErrMsg&&<GhBtn ch="Cancel" onClick={()=>setShowPayLink(false)} style={{width:'100%',textAlign:'center',marginTop:4}}/>}
         </div>}
@@ -376,9 +375,29 @@ function DetailModal({id,members,setMembers,onClose}){
       <div style={{display:'flex',gap:8}}><GhBtn ch="Cancel" onClick={()=>setShowLogSession(false)} style={{flex:1}}/><button onClick={confirmLogSession} disabled={sv} style={{flex:2,padding:'11px',background:'#1a4a1a',border:'1px solid #2a6a2a',borderRadius:6,color:GRN,fontSize:13,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',opacity:sv?.6:1}}>{sv?'Saving...':'Confirm Session'}</button></div>
     </div>}
 
+    {/* Full member details + waiver -- always visible to admin */}
+    {(m.martial_arts_experience||m.physical_limitations||m.allergies_medications||m.height_weight||m.heard_about_us||m.address_line1||m.city)&&<div style={{background:SURF,borderRadius:8,padding:'14px 16px',marginBottom:12}}>
+      <SLabel ch="Member Details"/>
+      <div style={{display:'flex',flexDirection:'column',gap:12}}>
+        {m.address_line1&&<div><div style={{color:'#444',fontSize:9,fontFamily:F,letterSpacing:1.5,textTransform:'uppercase',marginBottom:2}}>Address</div><div style={{color:'#888',fontSize:13,fontFamily:FB}}>{[m.address_line1,m.address_line2,m.city,m.state,m.zip].filter(Boolean).join(', ')}</div></div>}
+        {m.martial_arts_experience&&<div><div style={{color:'#444',fontSize:9,fontFamily:F,letterSpacing:1.5,textTransform:'uppercase',marginBottom:2}}>Martial Arts Experience</div><div style={{color:'#888',fontSize:13,fontFamily:FB,lineHeight:1.4}}>{m.martial_arts_experience}</div></div>}
+        {m.physical_limitations&&<div><div style={{color:'#444',fontSize:9,fontFamily:F,letterSpacing:1.5,textTransform:'uppercase',marginBottom:2}}>Physical Limitations</div><div style={{color:'#888',fontSize:13,fontFamily:FB,lineHeight:1.4}}>{m.physical_limitations}</div></div>}
+        {m.allergies_medications&&<div><div style={{color:'#444',fontSize:9,fontFamily:F,letterSpacing:1.5,textTransform:'uppercase',marginBottom:2}}>Allergies / Medications</div><div style={{color:'#888',fontSize:13,fontFamily:FB,lineHeight:1.4}}>{m.allergies_medications}</div></div>}
+        {m.height_weight&&<div><div style={{color:'#444',fontSize:9,fontFamily:F,letterSpacing:1.5,textTransform:'uppercase',marginBottom:2}}>Height / Weight</div><div style={{color:'#888',fontSize:13,fontFamily:FB}}>{m.height_weight}</div></div>}
+        {m.heard_about_us&&<div><div style={{color:'#444',fontSize:9,fontFamily:F,letterSpacing:1.5,textTransform:'uppercase',marginBottom:2}}>How They Heard About Us</div><div style={{color:'#888',fontSize:13,fontFamily:FB}}>{m.heard_about_us}</div></div>}
+      </div>
+    </div>}
+    <div style={{background:m.waiver_signed_at?'#0a1000':'#1a0800',border:`1px solid ${m.waiver_signed_at?'#2a6a20':'#7a3300'}`,borderRadius:8,padding:'12px 14px',marginBottom:12}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:m.waiver_signed_at?4:0}}>
+        <span style={{fontSize:14}}>{m.waiver_signed_at?'✅':'⚠️'}</span>
+        <div style={{color:m.waiver_signed_at?GRN:ORG,fontSize:12,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase'}}>{m.waiver_signed_at?'Waiver Signed':'No Waiver on File'}</div>
+      </div>
+      {m.waiver_signed_at&&<div style={{color:'#666',fontSize:12,fontFamily:FB}}>{new Date(m.waiver_signed_at).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}{m.waiver_signed_by&&m.waiver_signed_by!==m.name?` — signed by ${m.waiver_signed_by}`:''}</div>}
+    </div>
+
     {m.status==='walk_in'&&<div style={{background:SURF,borderRadius:8,padding:'14px 16px',marginBottom:12}}>
       <SLabel ch="Merge with Auth Account"/>
-      <div style={{color:'#555',fontSize:12,fontFamily:FB,lineHeight:1.5,marginBottom:10}}>If this walk-in signed up and created a portal account separately, merge their records so sessions, waiver, and data transfer to the new account.</div>
+      <div style={{color:'#555',fontSize:12,fontFamily:FB,lineHeight:1.5,marginBottom:10}}>If this walk-in signed up and created a portal account separately, merge their records.</div>
       {!showMerge&&<button onClick={()=>setShowMerge(true)} style={{width:'100%',padding:'10px',background:'#0a1020',border:'1px solid #2a5a8a',borderRadius:6,color:BLUE,fontSize:12,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>Merge Into Another Account</button>}
       {showMerge&&<div>
         <div style={{color:GD,fontSize:10,letterSpacing:1.5,textTransform:'uppercase',marginBottom:6,fontWeight:800,fontFamily:F}}>Select the account to merge INTO</div>
@@ -402,8 +421,9 @@ function DetailModal({id,members,setMembers,onClose}){
   </>}/>;
 }
 
+// ---- PAYMENTS TAB ----
 function PaymentsView({members,setMembers}){
-  const sorted=[...members].sort((a,b)=>({overdue:0,pending:1,active:2,inactive:3}[a.status]-{overdue:0,pending:1,active:2,inactive:3}[b.status]));
+  const sorted=[...members].filter(m=>m.status!=='walk_in').sort((a,b)=>({overdue:0,pending:1,active:2,inactive:3}[a.status]-{overdue:0,pending:1,active:2,inactive:3}[b.status]));
   const od=members.filter(m=>m.status==='overdue').length;
   const [sv,setSv]=useState(null);
   async function markPaid(id){setSv(id);const lp=todayStr();const nx=new Date();nx.setMonth(nx.getMonth()+1);await adminUpdate(id,{status:'active',last_payment:lp,next_payment_date:nx.toISOString().split('T')[0]});setMembers(ms=>ms.map(m=>m.id===id?{...m,status:'active',last_payment:lp}:m));setSv(null);}
@@ -414,7 +434,7 @@ function PaymentsView({members,setMembers}){
       const nx=m.last_payment?new Date(m.last_payment):null;if(nx)nx.setMonth(nx.getMonth()+1);
       return <div key={m.id} style={{background:isOD?'#100800':CARD,border:`1px solid ${isOD?'#4a2000':BL}`,borderRadius:10,marginBottom:8,padding:'16px 18px'}}>
         <div style={{display:'flex',alignItems:'center',gap:12}}>
-          <div style={{width:42,height:42,borderRadius:8,background:GK,border:`1.5px solid ${GD}`,display:'flex',alignItems:'center',justifyContent:'center',color:G,fontSize:13,fontWeight:800,fontFamily:F,flexShrink:0}}>{ini(m.name)}</div>
+          <Av m={m} size={42} radius={8}/>
           <div style={{flex:1,minWidth:0}}>
             <div style={{color:'#fff',fontSize:16,fontWeight:700,fontFamily:FB,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{m.name}</div>
             <div style={{display:'flex',alignItems:'center',gap:8,marginTop:2}}>
@@ -436,6 +456,7 @@ function PaymentsView({members,setMembers}){
   </>;
 }
 
+// ---- SCHEDULE ----
 function ScheduleView({schedule,setSchedule}){
   const [mode,setMode]=useState('week');const [modal,setModal]=useState(null);
   const [form,setForm]=useState({day_of_week:1,start_time:'18:30',class_name:'',type:'Gi',instructor:''});
@@ -490,6 +511,7 @@ function ScheduleView({schedule,setSchedule}){
   </>;
 }
 
+// ---- PRODUCTS ----
 function ProductsView({products,setProducts,members}){
   const [modal,setModal]=useState(null);const [form,setForm]=useState({name:'',description:'',price_cents:'',inventory:''});
   const [chargeModal,setChargeModal]=useState(null);const [chargeMem,setChargeMem]=useState('');const [sv,setSv]=useState(false);
@@ -532,6 +554,7 @@ function ProductsView({products,setProducts,members}){
   </>;
 }
 
+// ---- ANALYTICS ----
 function FinancialMetrics({members}){
   const now=new Date();
   const active=members.filter(m=>m.status==='active');
@@ -553,6 +576,7 @@ function FinancialMetrics({members}){
   const ltvTenure=avgTuition*avgTenureMonths*2;
   const fmtD=n=>`$${Math.round(n).toLocaleString()}`;
   const fmtM=n=>`$${n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+  const pending=members.filter(m=>m.status==='pending');
   const cs={background:CARD,border:`1px solid ${BL}`,borderRadius:10,padding:20,marginBottom:14};
   return <>
     <div style={{...cs,background:`linear-gradient(135deg,${CARD},${GK})`,border:`1px solid ${G}30`}}>
@@ -571,7 +595,7 @@ function FinancialMetrics({members}){
     </div>
     <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
       <div style={cs}><div style={{color:'#444',fontSize:10,textTransform:'uppercase',letterSpacing:1.5,fontWeight:700,fontFamily:F,marginBottom:4}}>Avg Monthly Tuition</div><div style={{color:'#fff',fontSize:32,fontWeight:900,fontFamily:FN,lineHeight:1}}>{fmtM(avgTuition)}</div><div style={{color:'#333',fontSize:11,fontFamily:FB,marginTop:4}}>per active member</div></div>
-      <div style={cs}><div style={{color:'#444',fontSize:10,textTransform:'uppercase',letterSpacing:1.5,fontWeight:700,fontFamily:F,marginBottom:4}}>Active Members</div><div style={{color:GRN,fontSize:32,fontWeight:900,fontFamily:FN,lineHeight:1}}>{active.length}</div><div style={{color:'#333',fontSize:11,fontFamily:FB,marginTop:4}}>{overdue.length} overdue, {members.filter(m=>m.status==='pending').length} pending</div></div>
+      <div style={cs}><div style={{color:'#444',fontSize:10,textTransform:'uppercase',letterSpacing:1.5,fontWeight:700,fontFamily:F,marginBottom:4}}>Active Members</div><div style={{color:GRN,fontSize:32,fontWeight:900,fontFamily:FN,lineHeight:1}}>{active.length}</div><div style={{color:'#333',fontSize:11,fontFamily:FB,marginTop:4}}>{overdue.length} overdue, {pending.length} pending</div></div>
     </div>
     <div style={cs}>
       <SLabel ch="Lifetime Value Estimates"/>
@@ -589,7 +613,7 @@ function FinancialMetrics({members}){
           <div style={{marginTop:8,height:3,background:'#1a1a00',borderRadius:2}}><div style={{height:3,borderRadius:2,background:GRN,width:`${Math.min(100,avgTenureMonths/24*100)}%`}}/></div>
         </div>
       </div>
-      <div style={{marginTop:12,color:'#333',fontSize:11,fontFamily:FB,borderTop:`1px solid ${BL}`,paddingTop:10}}>Numbers improve as more members have rates set. Set a rate by generating a payment link.</div>
+      <div style={{marginTop:12,color:'#333',fontSize:11,fontFamily:FB,borderTop:`1px solid ${BL}`,paddingTop:10}}>Numbers improve as more members have rates set.</div>
     </div>
   </>;
 }
@@ -625,17 +649,50 @@ function RecentPromotions(){
 }
 
 function AnalyticsView({members}){
-  const total=members.length;
+  const [retention,setRetention]=useState({in60:0,in30:0,retentionPct:0,loaded:false});
+  useEffect(()=>{
+    fetch('/api/analytics').then(r=>r.json()).then(d=>setRetention({...d,loaded:true}));
+  },[]);
+  const realMembers=members.filter(m=>m.status!=='walk_in');
+  const total=realMembers.length;
   const active=members.filter(m=>m.status==='active');
-  const t60=members.filter(m=>m.last_trained&&Math.floor((TODAY-new Date(m.last_trained))/86400000)<=60);
-  const t30=members.filter(m=>m.last_trained&&Math.floor((TODAY-new Date(m.last_trained))/86400000)<=30);
-  const ret=t60.length?Math.round((t30.length/t60.length)*100):0;
+  const walkIns=members.filter(m=>m.status==='walk_in');
+  const pending=members.filter(m=>m.status==='pending');
+  const converted=members.filter(m=>m.status!=='walk_in'&&m.status!=='inactive');
+  const conversionRate=walkIns.length+converted.length>0?Math.round((converted.length/(walkIns.length+converted.length))*100):0;
+  const ret=retention.retentionPct;
   const newM=members.filter(m=>Math.floor((TODAY-new Date(m.joined_at))/86400000)<=30).length;
-  const top=[...members].sort((a,b)=>(b.sessions||0)-(a.sessions||0)).slice(0,5);
+  const top=[...realMembers].sort((a,b)=>(b.sessions||0)-(a.sessions||0)).slice(0,5);
   const maxS=top[0]?.sessions||1;
   const r=38,circ=2*Math.PI*r,dash=circ*(ret/100),ringC=ret>=70?GRN:ret>=50?G:ORG;
+  const in30=retention.in30,in60=retention.in60;
   const cs={background:CARD,border:`1px solid ${BL}`,borderRadius:10,padding:20,marginBottom:14};
   return <>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:14}}>
+      {[{l:'Total Members',v:total,c:'#fff',sub:'excl. walk-ins'},{l:'Pending',v:pending.length,c:BLUE,sub:'awaiting payment'},{l:'Walk-ins',v:walkIns.length,c:TEAL,sub:'on file'}].map(s=><div key={s.l} style={{background:CARD,border:`1px solid ${BL}`,borderRadius:10,padding:'14px 12px',textAlign:'center'}}>
+        <div style={{color:'#444',fontSize:9,textTransform:'uppercase',letterSpacing:1.5,fontWeight:700,fontFamily:F}}>{s.l}</div>
+        <div style={{color:s.c,fontSize:28,fontWeight:900,fontFamily:FN,marginTop:4,lineHeight:1}}>{s.v}</div>
+        <div style={{color:'#333',fontSize:10,fontFamily:FB,marginTop:3}}>{s.sub}</div>
+      </div>)}
+    </div>
+    <div style={{background:CARD,border:`1px solid ${TEAL}30`,borderRadius:10,padding:20,marginBottom:14}}>
+      <SLabel ch="Walk-in Conversion"/>
+      <div style={{display:'flex',alignItems:'center',gap:20,flexWrap:'wrap'}}>
+        <div style={{position:'relative',width:80,height:80,flexShrink:0}}>
+          <svg width="80" height="80" viewBox="0 0 100 100" style={{transform:'rotate(-90deg)'}}>
+            <circle cx="50" cy="50" r="38" fill="none" stroke="#0a2020" strokeWidth="10"/>
+            <circle cx="50" cy="50" r="38" fill="none" stroke={TEAL} strokeWidth="10" strokeDasharray={`${2*Math.PI*38*(conversionRate/100)} ${2*Math.PI*38}`} strokeLinecap="round"/>
+          </svg>
+          <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <div style={{fontWeight:900,fontSize:20,color:TEAL,fontFamily:FN,lineHeight:1}}>{conversionRate}%</div>
+          </div>
+        </div>
+        <div style={{flex:1}}>
+          <div style={{color:'#fff',fontSize:15,fontWeight:600,fontFamily:FB,lineHeight:1.5}}>{converted.length} of {walkIns.length+converted.length} walk-ins became paying members</div>
+          <div style={{color:'#555',fontSize:12,fontFamily:FB,marginTop:6}}>Walk-ins who converted to active, pending, or overdue status</div>
+        </div>
+      </div>
+    </div>
     <FinancialMetrics members={members}/>
     <div style={cs}>
       <SLabel ch="30-Day Retention"/>
@@ -650,9 +707,9 @@ function AnalyticsView({members}){
           </div>
         </div>
         <div style={{flex:1}}>
-          <div style={{color:'#fff',fontSize:15,fontWeight:600,fontFamily:FB,lineHeight:1.5}}>{t30.length} of {t60.length} recent members returned in last 30 days.</div>
+          <div style={{color:'#fff',fontSize:15,fontWeight:600,fontFamily:FB,lineHeight:1.5}}>{retention.loaded?`${in30} of ${in60} active members trained in last 30 days`:'Loading...'}</div>
           <div style={{display:'flex',gap:8,marginTop:14,flexWrap:'wrap'}}>
-            {[{l:'New',v:`+${newM}`,c:GRN},{l:'Active',v:active.length,c:G}].map(x=><div key={x.l} style={{flex:'1 1 80px',background:SURF,borderRadius:8,padding:'12px 14px'}}>
+            {[{l:'New (30d)',v:`+${newM}`,c:GRN},{l:'Active',v:active.length,c:G}].map(x=><div key={x.l} style={{flex:'1 1 80px',background:SURF,borderRadius:8,padding:'12px 14px'}}>
               <div style={{color:'#444',fontSize:10,fontFamily:F,fontWeight:700,letterSpacing:1.5,textTransform:'uppercase'}}>{x.l}</div>
               <div style={{color:x.c,fontSize:26,fontWeight:900,fontFamily:FN,marginTop:3}}>{x.v}</div>
             </div>)}
@@ -674,13 +731,14 @@ function AnalyticsView({members}){
       </div>
       <div style={cs}>
         <SLabel ch="Belt Breakdown"/>
-        {BELTS.map(b=>{const cnt=members.filter(m=>m.belt===b).length;if(!cnt)return null;const c=BELT_CFG[b];return <div key={b} style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}><BB belt={b} stripes={0}/><div style={{flex:1}}><div style={{height:5,background:'#111',borderRadius:3}}><div style={{height:5,borderRadius:3,background:c.bg==='#e8e8e0'?'#d0d0c8':c.bg,border:`1px solid ${c.br}`,width:`${(cnt/total)*100}%`}}/></div></div><div style={{color:'#fff',fontWeight:800,fontSize:15,fontFamily:FN,width:22,textAlign:'right'}}>{cnt}</div></div>;})}
+        {BELTS.map(b=>{const cnt=realMembers.filter(m=>m.belt===b).length;if(!cnt)return null;const c=BELT_CFG[b];return <div key={b} style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}><BB belt={b} stripes={0}/><div style={{flex:1}}><div style={{height:5,background:'#111',borderRadius:3}}><div style={{height:5,borderRadius:3,background:c.bg==='#e8e8e0'?'#d0d0c8':c.bg,border:`1px solid ${c.br}`,width:`${(cnt/total)*100}%`}}/></div></div><div style={{color:'#fff',fontWeight:800,fontSize:15,fontFamily:FN,width:22,textAlign:'right'}}>{cnt}</div></div>;})}
       </div>
     </div>
     <RecentPromotions/>
   </>;
 }
 
+// ---- ROOT ----
 export default function AdminApp({initialMembers,initialSchedule,initialProducts}){
   const [members,setMembers]=useState(initialMembers);
   const [schedule,setSchedule]=useState(initialSchedule);
@@ -691,12 +749,35 @@ export default function AdminApp({initialMembers,initialSchedule,initialProducts
   const [allSessions,setAllSessions]=useState([]);
   const [allSessionsLoading,setAllSessionsLoading]=useState(false);
   const [confirmDelGlobalSession,setConfirmDelGlobalSession]=useState(null);
+  const [adminPosts,setAdminPosts]=useState([]);
+  const [adminPostsLoaded,setAdminPostsLoaded]=useState(false);
+  const [adminConfirmDel,setAdminConfirmDel]=useState(null);
 
+  useEffect(()=>{if(view==='feed')loadAdminFeed();},[view]);
+
+  async function loadAdminFeed(){
+    setAdminPostsLoaded(false);
+    const res=await fetch('/api/posts');
+    const data=await res.json();
+    setAdminPosts(data.posts||[]);
+    setAdminPostsLoaded(true);
+  }
+  async function adminDeletePost(postId){
+    await fetch('/api/posts',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({post_id:postId,is_admin:true})});
+    setAdminPosts(ps=>ps.filter(p=>p.id!==postId));setAdminConfirmDel(null);
+  }
   async function loadAllSessions(){setAllSessionsLoading(true);setShowAllSessions(true);const{data}=await supabase.from('sessions').select('*, members(name)').order('session_date',{ascending:false}).limit(200);setAllSessions(data||[]);setAllSessionsLoading(false);}
   async function deleteGlobalSession(sessionId,memberId){await fetch('/api/log-session',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,memberId})});const{data:fresh}=await supabase.from('members').select('sessions').eq('id',memberId).single();setMembers(ms=>ms.map(x=>x.id===memberId?{...x,sessions:fresh?.sessions||0}:x));setAllSessions(s=>s.filter(x=>x.id!==sessionId));setConfirmDelGlobalSession(null);}
 
-  const stats=[{l:'Pending',v:members.filter(m=>m.status==='pending').length,c:BLUE},{l:'Active',v:members.filter(m=>m.status==='active').length,c:GRN},{l:'Overdue',v:members.filter(m=>m.status==='overdue').length,c:ORG},{l:'Sessions',v:members.reduce((a,m)=>a+(m.sessions||0),0).toLocaleString(),c:G}];
-  const navs=[{id:'roster',l:'Roster',icon:'◉'},{id:'payments',l:'Payments',icon:'◈'},{id:'schedule',l:'Schedule',icon:'⊕'},{id:'products',l:'Gear',icon:'⊞'},{id:'analytics',l:'Stats',icon:'▲'}];
+  const realMembers=members.filter(m=>m.status!=='walk_in');
+  const walkIns=members.filter(m=>m.status==='walk_in');
+  const stats=[
+    {l:'Members',v:realMembers.length,c:'#fff'},
+    {l:'Active',v:members.filter(m=>m.status==='active').length,c:GRN},
+    {l:'Walk-ins',v:walkIns.length,c:TEAL},
+    {l:'Sessions',v:members.reduce((a,m)=>a+(m.sessions||0),0).toLocaleString(),c:G},
+  ];
+  const navs=[{id:'roster',l:'Roster',icon:'◉'},{id:'feed',l:'Feed',icon:'◈'},{id:'payments',l:'Payments',icon:'⊕'},{id:'schedule',l:'Schedule',icon:'⊞'},{id:'analytics',l:'Stats',icon:'▲'}];
 
   return <div style={{minHeight:'100vh',background:BG,color:'#fff',fontFamily:FB}}>
     <div style={{height:3,background:`linear-gradient(90deg,${G},${GD})`}}/>
@@ -707,9 +788,39 @@ export default function AdminApp({initialMembers,initialSchedule,initialProducts
     <StatBar stats={stats} onSessionsClick={loadAllSessions}/>
     <div style={{padding:'20px',paddingBottom:100}}>
       {view==='roster'&&<RosterView members={members} setMembers={setMembers} openDetail={setDetailId}/>}
+      {view==='feed'&&<div>
+        <div style={{fontWeight:800,fontSize:24,letterSpacing:.5,color:'#fff',fontFamily:FB,marginBottom:14}}>Mat Feed</div>
+        {!adminPostsLoaded&&<div style={{color:'#555',fontSize:14,fontFamily:FB,padding:'20px 0',textAlign:'center'}}>Loading...</div>}
+        {adminPostsLoaded&&adminPosts.length===0&&<div style={{color:'#444',fontSize:14,fontFamily:FB,textAlign:'center',padding:'40px 0'}}>No posts yet.</div>}
+        {adminPosts.map(p=>{
+          const isPromo=p.post_type==='promotion';
+          const ago=d=>{const diff=Math.floor((new Date()-new Date(d))/86400000);if(diff===0){const hrs=Math.floor((new Date()-new Date(d))/3600000);return hrs===0?'Just now':`${hrs}h ago`;}return diff===1?'Yesterday':`${diff}d ago`;};
+          return <div key={p.id} style={{background:CARD,border:`1px solid ${isPromo?G+'40':BL}`,borderRadius:10,marginBottom:8,overflow:'hidden'}}>
+            {isPromo&&<div style={{height:2,background:`linear-gradient(90deg,${G},${GD})`}}/>}
+            <div style={{padding:'12px 16px'}}>
+              <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:p.content||p.image_url?10:0}}>
+                <div style={{width:34,height:34,borderRadius:8,background:GK,border:`1.5px solid ${GD}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:800,color:G,fontFamily:F,flexShrink:0}}>{p.member_name?p.member_name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase():'?'}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{color:'#fff',fontSize:14,fontWeight:700,fontFamily:FB}}>{p.member_name||'Unknown'}{isPromo&&<span style={{color:G,marginLeft:8,fontSize:10,fontWeight:800,letterSpacing:1}}>PROMOTION</span>}</div>
+                  <div style={{color:'#444',fontSize:11,fontFamily:F}}>{ago(p.created_at)}</div>
+                </div>
+                {adminConfirmDel===p.id
+                  ?<div style={{display:'flex',gap:6,alignItems:'center',flexShrink:0}}>
+                    <span style={{color:'#888',fontSize:11,fontFamily:FB}}>Delete?</span>
+                    <button onClick={()=>adminDeletePost(p.id)} style={{padding:'3px 10px',background:'#3a0a0a',border:'1px solid #7a2020',borderRadius:4,color:RED,fontSize:11,fontFamily:F,cursor:'pointer'}}>Yes</button>
+                    <button onClick={()=>setAdminConfirmDel(null)} style={{padding:'3px 10px',background:'transparent',border:`1px solid ${BL}`,borderRadius:4,color:'#555',fontSize:11,fontFamily:F,cursor:'pointer'}}>No</button>
+                  </div>
+                  :<button onClick={()=>setAdminConfirmDel(p.id)} style={{padding:'4px 10px',background:'transparent',border:'1px solid #4a1000',borderRadius:4,color:'#7a2a00',fontSize:10,fontFamily:F,letterSpacing:1,cursor:'pointer',flexShrink:0}}>Delete</button>
+                }
+              </div>
+              {p.content&&<div style={{color:'#aaa',fontSize:14,fontFamily:FB,lineHeight:1.5,marginBottom:p.image_url?8:0}}>{p.content}</div>}
+              {p.image_url&&<img src={p.image_url} alt="post" style={{width:'100%',maxHeight:300,objectFit:'cover',borderRadius:6,display:'block'}}/>}
+            </div>
+          </div>;
+        })}
+      </div>}
       {view==='payments'&&<PaymentsView members={members} setMembers={setMembers}/>}
       {view==='schedule'&&<ScheduleView schedule={schedule} setSchedule={setSchedule}/>}
-      {view==='products'&&<ProductsView products={products} setProducts={setProducts} members={members}/>}
       {view==='analytics'&&<AnalyticsView members={members}/>}
     </div>
     <div style={{position:'fixed',bottom:0,left:0,right:0,background:'#0a0a08',borderTop:`1px solid ${BL}`,display:'flex',zIndex:50,paddingBottom:'env(safe-area-inset-bottom)'}}>

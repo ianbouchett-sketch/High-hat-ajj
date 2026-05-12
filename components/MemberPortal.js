@@ -89,6 +89,10 @@ function Logo(){
     </div>
   </div>;
 }
+function Av({m,size=36,radius=8}){
+  if(m?.avatar_url)return <img src={m.avatar_url} alt={m?.name||''} style={{width:size,height:size,borderRadius:radius,objectFit:'cover',flexShrink:0,border:`1.5px solid ${G}30`}}/>;
+  return <div style={{width:size,height:size,borderRadius:radius,background:m?.avatar_color||GK,border:`1.5px solid ${G}40`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:Math.round(size*0.38),fontWeight:800,color:G,fontFamily:F,flexShrink:0}}>{ini(m?.name)}</div>;
+}
 
 export default function MemberPortal({initialMember,initialSessions,initialSchedule}){
   const router=useRouter();
@@ -124,17 +128,16 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
   const [postUploading,setPostUploading]=useState(false);
   const [hashtagFilter,setHashtagFilter]=useState(null);
   const [confirmDelPost,setConfirmDelPost]=useState(null);
+  const [memberModal,setMemberModal]=useState(null);
+  const [showAllLeaderboard,setShowAllLeaderboard]=useState(false);
+  const [allMembers,setAllMembers]=useState([]);
 
   useEffect(()=>{
-    if(initialMember?.status==='pending'&&initialMember?.stripe_checkout_session){
-      setShowPendingModal(true);
-    }
+    if(initialMember?.status==='pending'&&initialMember?.stripe_checkout_session)setShowPendingModal(true);
   },[]);
 
   useEffect(()=>{
-    function onVisible(){
-      if(document.visibilityState==='visible') setRefreshKey(k=>k+1);
-    }
+    function onVisible(){if(document.visibilityState==='visible')setRefreshKey(k=>k+1);}
     document.addEventListener('visibilitychange',onVisible);
     return ()=>document.removeEventListener('visibilitychange',onVisible);
   },[]);
@@ -155,9 +158,7 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
         supabase.from('attendance_plans').select('schedule_id,member_id,members(name)').eq('week_start',weekStart),
         supabase.from('attendance_plans').select('schedule_id').eq('member_id',initialMember?.id||'').eq('week_start',weekStart),
       ]);
-      const trainers=communityRes.trainers||[];
-      const promos=communityRes.promos||[];
-      setCommunity({topTrainers:trainers,recentPromos:promos,loaded:true});
+      setCommunity({topTrainers:communityRes.trainers||[],recentPromos:communityRes.promos||[],loaded:true});
       const lMap={};
       (likeData||[]).forEach(l=>{
         if(!lMap[l.promotion_id])lMap[l.promotion_id]={count:0,liked:false};
@@ -176,10 +177,7 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
     loadCommunity();
   },[view,refreshKey]);
 
-  useEffect(()=>{
-    if(view!=='feed')return;
-    loadFeed();
-  },[view,hashtagFilter]);
+  useEffect(()=>{if(view==='feed')loadFeed();},[view,hashtagFilter]);
 
   async function loadFeed(){
     setPostsLoaded(false);
@@ -202,15 +200,13 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
     setPostUploading(true);
     let image_url=null;
     if(postImage){
-      const ext=postImage.name.split('.').pop();
-      const path=`${member.id}/${Date.now()}.${ext}`;
-      const{error:upErr}=await supabase.storage.from('Posts').upload(path,postImage,{upsert:true});
-      if(upErr){
-        console.error('Image upload error:',upErr.message);
-      } else {
-        const{data:{publicUrl}}=supabase.storage.from('Posts').getPublicUrl(path);
-        image_url=publicUrl;
-      }
+      const fd=new FormData();
+      fd.append('file',postImage);
+      fd.append('memberId',member.id);
+      const imgRes=await fetch('/api/upload-post-image',{method:'POST',body:fd});
+      const imgData=await imgRes.json();
+      if(imgData.publicUrl)image_url=imgData.publicUrl;
+      else console.error('Image upload failed:',imgData.error);
     }
     const res=await fetch('/api/posts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({member_id:member.id,member_name:member.name,content:postText.trim(),image_url,post_type:'member'})});
     const data=await res.json();
@@ -234,6 +230,21 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
     setPosts(ps=>ps.filter(p=>p.id!==postId));setConfirmDelPost(null);showT('Post deleted.');
   }
 
+  async function openMemberModal(memberId){
+    if(memberId===member.id){setView('profile');return;}
+    setMemberModal({id:memberId,loading:true,data:null});
+    const res=await fetch(`/api/member-profile?id=${memberId}`);
+    const d=await res.json();
+    setMemberModal({id:memberId,loading:false,data:d});
+  }
+
+  async function loadAllMembers(){
+    setAllMembers([]);setShowAllLeaderboard(true);
+    const res=await fetch('/api/community?all=1');
+    const d=await res.json();
+    setAllMembers(d.trainers||[]);
+  }
+
   function renderContent(text){
     if(!text)return null;
     const parts=text.split(/(#\w+)/g);
@@ -243,10 +254,7 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
     );
   }
 
-  function goTo(id){
-    if(id==='home')setRefreshKey(k=>k+1);
-    setView(id);
-  }
+  function goTo(id){if(id==='home')setRefreshKey(k=>k+1);setView(id);}
 
   async function deleteSession(sessionId){
     const res=await fetch('/api/log-session',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,memberId:member.id})});
@@ -334,10 +342,7 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
           <div style={{height:3,background:`linear-gradient(90deg,${G}80,transparent)`}}/>
           <div style={{padding:'22px 20px'}}>
             <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:22}}>
-              {member.avatar_url
-                ?<img src={member.avatar_url} alt={member.name} style={{width:58,height:58,borderRadius:10,objectFit:'cover',border:`2px solid ${G}40`,flexShrink:0}}/>
-                :<div style={{width:58,height:58,borderRadius:10,background:member.avatar_color||GK,border:`2px solid ${G}40`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,fontWeight:800,color:G,fontFamily:F,letterSpacing:1.5,flexShrink:0}}>{ini(member.name)}</div>
-              }
+              <Av m={member} size={58} radius={10}/>
               <div>
                 <div style={{color:'#fff',fontSize:24,fontWeight:800,fontFamily:FB,lineHeight:1}}>{member.name}</div>
                 <div style={{color:'#555',fontSize:12,marginTop:5,fontFamily:FB}}>Member since {member.joined_at?new Date(member.joined_at).toLocaleDateString('en-US',{month:'long',year:'numeric'}):'—'}</div>
@@ -435,10 +440,11 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
           {community.topTrainers.map((t,i)=>{
             const maxS=community.topTrainers[0]?.sessions||1;
             const c=BELT_CFG[t.belt]||BELT_CFG.White;
-            return <div key={t.id} style={{display:'flex',alignItems:'center',gap:12,marginBottom:12}}>
+            return <div key={t.id} onClick={()=>openMemberModal(t.id)} style={{display:'flex',alignItems:'center',gap:12,marginBottom:12,cursor:'pointer'}}>
               <div style={{color:i===0?G:'#2a2200',fontWeight:900,fontSize:18,fontFamily:FN,width:22,textAlign:'center',flexShrink:0}}>{i+1}</div>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:5}}>
+                  <Av m={t} size={22} radius={4}/>
                   <span style={{color:t.id===member.id?G:'#fff',fontSize:15,fontWeight:t.id===member.id?800:600,fontFamily:FB,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{t.id===member.id?'You':t.name}</span>
                   <span style={{padding:'1px 6px',background:c.bg,border:`1px solid ${c.br}`,borderRadius:3,fontSize:8,fontWeight:800,fontFamily:F,color:c.tx,letterSpacing:1,textTransform:'uppercase',flexShrink:0}}>{t.belt}</span>
                 </div>
@@ -448,6 +454,7 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
             </div>;
           })}
           {community.loaded&&community.topTrainers.length===0&&<div style={{color:'#333',fontSize:14,fontFamily:FB}}>No data yet.</div>}
+          {community.loaded&&community.topTrainers.length>=10&&<button onClick={loadAllMembers} style={{width:'100%',padding:'10px',background:'transparent',border:`1px solid ${BL}`,borderRadius:6,color:GD,fontSize:11,fontFamily:F,letterSpacing:1.5,textTransform:'uppercase',cursor:'pointer',marginTop:4}}>See All Members</button>}
         </div></Card>
 
         {community.recentPromos.length>0&&<Card><div style={{padding:'16px 18px'}}>
@@ -484,10 +491,9 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
           <div style={{fontWeight:800,fontSize:26,color:'#fff',fontFamily:FB}}>Mat Feed</div>
           {hashtagFilter&&<button onClick={()=>setHashtagFilter(null)} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 14px',background:GK,border:`1px solid ${G}`,borderRadius:20,color:G,fontSize:12,fontWeight:800,fontFamily:F,letterSpacing:1,cursor:'pointer'}}>#{hashtagFilter} ×</button>}
         </div>
-
         <div style={{background:CARD,border:`1px solid ${BL}`,borderRadius:10,padding:'16px 18px',marginBottom:14}}>
           <div style={{display:'flex',gap:12,alignItems:'flex-start',marginBottom:10}}>
-            <div style={{width:36,height:36,borderRadius:8,background:member.avatar_color||GK,border:`1.5px solid ${G}40`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:800,color:G,fontFamily:F,flexShrink:0}}>{ini(member.name)}</div>
+            <Av m={member} size={36} radius={8}/>
             <textarea value={postText} onChange={e=>setPostText(e.target.value)} placeholder="Share something with the academy... use #hashtags" rows={3} style={{flex:1,background:SURF,border:`1px solid ${BL}`,borderRadius:6,padding:'10px 14px',color:'#fff',fontSize:14,outline:'none',fontFamily:FB,resize:'vertical',minHeight:70,colorScheme:'dark',boxSizing:'border-box',width:'100%'}}/>
           </div>
           {postImagePreview&&<div style={{marginBottom:10,position:'relative',display:'inline-block'}}>
@@ -502,7 +508,6 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
             <button onClick={submitPost} disabled={postUploading||(!postText.trim()&&!postImage)} style={{marginLeft:'auto',padding:'8px 18px',background:G,border:'none',borderRadius:6,color:'#000',fontWeight:800,fontSize:13,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',opacity:postUploading||(!postText.trim()&&!postImage)?.5:1}}>{postUploading?'Posting...':'Post'}</button>
           </div>
         </div>
-
         {!postsLoaded&&<div style={{color:'#333',fontSize:14,fontFamily:FB,textAlign:'center',padding:'40px 0'}}>Loading...</div>}
         {postsLoaded&&posts.length===0&&<div style={{color:'#333',fontSize:14,fontFamily:FB,textAlign:'center',padding:'40px 0'}}>Nothing posted yet. Be the first!</div>}
         {posts.map(p=>{
@@ -616,13 +621,10 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
       {view==='profile'&&<div>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}}>
           <div style={{fontWeight:800,fontSize:26,color:'#fff',fontFamily:FB}}>My Profile</div>
-          <GhBtn onClick={openEdit}>Edit</GhBtn>
+          <GhBtn onClick={openEdit}>Edit Info</GhBtn>
         </div>
         <Card><div style={{padding:'20px 18px',display:'flex',alignItems:'flex-start',gap:14}}>
-          {member.avatar_url
-            ?<img src={member.avatar_url} alt={member.name} style={{width:58,height:58,borderRadius:10,objectFit:'cover',border:`2px solid ${G}40`,flexShrink:0}}/>
-            :<div style={{width:58,height:58,borderRadius:10,background:member.avatar_color||GK,border:`2px solid ${G}40`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,fontWeight:800,color:G,fontFamily:F,letterSpacing:1.5,flexShrink:0}}>{ini(member.name)}</div>
-          }
+          <Av m={member} size={58} radius={10}/>
           <div style={{flex:1}}>
             <div style={{color:'#fff',fontSize:20,fontWeight:800,fontFamily:FB}}>{member.name}</div>
             <div style={{color:'#555',fontSize:13,marginTop:2,fontFamily:FB}}>{member.email}</div>
@@ -631,6 +633,7 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
             <div style={{marginTop:12}}><BeltBar belt={member.belt||'White'} stripes={member.stripes||0}/></div>
           </div>
         </div></Card>
+
         <Card><div style={{padding:'16px 18px'}}>
           <SLabel>Contact</SLabel>
           <div style={{display:'flex',flexDirection:'column',gap:12}}>
@@ -658,26 +661,36 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
             <div style={{color:member.emergency_contact?'#fff':'#333',fontSize:15,fontFamily:FB}}>{member.emergency_contact||'Not set'}</div>
           </div>
         </div></Card>
-        {(member.martial_arts_experience||member.physical_limitations||member.allergies_medications||member.height_weight)&&<Card><div style={{padding:'16px 18px'}}>
-          <SLabel>Training Info</SLabel>
+
+        {(member.martial_arts_experience||member.physical_limitations||member.allergies_medications||member.height_weight||member.heard_about_us)&&<Card><div style={{padding:'16px 18px'}}>
+          <SLabel>Training Background</SLabel>
+          <div style={{color:'#444',fontSize:10,fontFamily:F,letterSpacing:1,textTransform:'uppercase',marginBottom:12}}>Collected at sign-up — contact your instructor to update</div>
           <div style={{display:'flex',flexDirection:'column',gap:14}}>
-            {[{l:'Martial Arts Experience',v:member.martial_arts_experience},{l:'Physical Limitations',v:member.physical_limitations},{l:'Allergies / Medications',v:member.allergies_medications},{l:'Height / Weight',v:member.height_weight}].map(f=>f.v&&<div key={f.l}>
+            {[{l:'Martial Arts Experience',v:member.martial_arts_experience},{l:'Physical Limitations',v:member.physical_limitations},{l:'Allergies / Medications',v:member.allergies_medications},{l:'Height / Weight',v:member.height_weight},{l:'How You Heard About Us',v:member.heard_about_us}].map(f=>f.v&&<div key={f.l}>
               <div style={{color:'#444',fontSize:10,textTransform:'uppercase',letterSpacing:1.5,fontWeight:700,fontFamily:F,marginBottom:3}}>{f.l}</div>
               <div style={{color:'#888',fontSize:14,fontFamily:FB,lineHeight:1.5}}>{f.v}</div>
             </div>)}
           </div>
         </div></Card>}
+
         <Card><div style={{padding:'16px 18px'}}>
-          <SLabel>Membership</SLabel>
-          <div style={{display:'flex',justifyContent:'space-between',marginBottom:member.waiver_signed_at?12:0}}>
+          <SLabel>Membership & Waiver</SLabel>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:12}}>
             <div><div style={{color:'#444',fontSize:10,textTransform:'uppercase',letterSpacing:1.5,fontWeight:700,fontFamily:F,marginBottom:3}}>Joined</div><div style={{color:'#fff',fontSize:15,fontWeight:700,fontFamily:FB}}>{member.joined_at?fmtM(member.joined_at):'—'}</div></div>
             <div style={{textAlign:'right'}}><div style={{color:'#444',fontSize:10,textTransform:'uppercase',letterSpacing:1.5,fontWeight:700,fontFamily:F,marginBottom:3}}>Next Billing</div><div style={{color:isOD?ORG:GRN,fontSize:15,fontWeight:700,fontFamily:FB}}>{member.next_payment_date?fmtM(member.next_payment_date):'—'}</div></div>
           </div>
-          {member.waiver_signed_at&&<div style={{paddingTop:12,borderTop:`1px solid ${BL}`}}>
-            <div style={{color:'#444',fontSize:10,textTransform:'uppercase',letterSpacing:1.5,fontWeight:700,fontFamily:F,marginBottom:3}}>Waiver Signed</div>
-            <div style={{color:'#555',fontSize:14,fontFamily:FB}}>{new Date(member.waiver_signed_at).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}{member.waiver_signed_by&&member.waiver_signed_by!==member.name?` by ${member.waiver_signed_by}`:''}</div>
-          </div>}
+          {member.waiver_signed_at
+            ?<div style={{background:'#0a1000',border:'1px solid #2a6a20',borderRadius:8,padding:'12px 14px'}}>
+              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+                <span style={{fontSize:16}}>✅</span>
+                <div style={{color:GRN,fontSize:13,fontWeight:800,fontFamily:F,letterSpacing:1,textTransform:'uppercase'}}>Waiver Signed</div>
+              </div>
+              <div style={{color:'#888',fontSize:13,fontFamily:FB}}>{new Date(member.waiver_signed_at).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}{member.waiver_signed_by&&member.waiver_signed_by!==member.name?` — signed by ${member.waiver_signed_by}`:''}</div>
+            </div>
+            :<div style={{background:'#1a0800',border:'1px solid #7a3300',borderRadius:8,padding:'12px 14px',color:ORG,fontSize:13,fontFamily:FB}}>No waiver on file — contact your instructor.</div>
+          }
         </div></Card>
+
         <button onClick={signOut} style={{width:'100%',padding:14,background:'transparent',border:`1px solid ${BL}`,borderRadius:8,color:'#444',fontSize:12,fontFamily:F,letterSpacing:2,textTransform:'uppercase',cursor:'pointer',marginTop:4}}>Sign Out</button>
       </div>}
     </div>
@@ -693,6 +706,69 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
       })}
     </div>
     <div style={{height:80}}/>
+
+    {memberModal&&<div onClick={()=>setMemberModal(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.88)',zIndex:200,display:'flex',alignItems:'flex-end',justifyContent:'center'}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:'#0e0e0c',border:`1px solid ${BL}`,borderRadius:'16px 16px 0 0',width:'100%',maxWidth:480,maxHeight:'80vh',overflowY:'auto'}}>
+        <div style={{width:40,height:4,background:'#333',borderRadius:2,margin:'12px auto 0'}}/>
+        <div style={{padding:'20px 24px 32px'}}>
+          {memberModal.loading&&<div style={{color:'#444',fontSize:14,fontFamily:FB,textAlign:'center',padding:'30px 0'}}>Loading...</div>}
+          {!memberModal.loading&&memberModal.data&&(()=>{
+            const p=memberModal.data.member;
+            const lp=memberModal.data.lastPromo;
+            if(!p)return <div style={{color:'#555',fontSize:14,fontFamily:FB,textAlign:'center',padding:'30px 0'}}>Member not found.</div>;
+            const bc=BELT_CFG[p.belt]||BELT_CFG.White;
+            return <>
+              <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:20}}>
+                <Av m={p} size={64} radius={12}/>
+                <div>
+                  <div style={{color:'#fff',fontSize:22,fontWeight:800,fontFamily:FB}}>{p.name}</div>
+                  <div style={{marginTop:8}}><BeltBar belt={p.belt||'White'} stripes={p.stripes||0}/></div>
+                </div>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
+                {[{l:'Sessions',v:p.sessions||0,c:G},{l:'Member Since',v:p.joined_at?new Date(p.joined_at).getFullYear():'—',c:'#fff'}].map(s=><div key={s.l} style={{background:SURF,border:`1px solid ${BL}`,borderRadius:8,padding:'12px',textAlign:'center'}}>
+                  <div style={{color:'#444',fontSize:10,textTransform:'uppercase',letterSpacing:1.5,fontWeight:700,fontFamily:F}}>{s.l}</div>
+                  <div style={{color:s.c,fontSize:26,fontWeight:900,fontFamily:FN,marginTop:4,lineHeight:1}}>{s.v}</div>
+                </div>)}
+              </div>
+              {lp&&<div style={{background:SURF,border:`1px solid ${BL}`,borderRadius:8,padding:'12px 14px',marginBottom:14}}>
+                <div style={{color:'#444',fontSize:10,textTransform:'uppercase',letterSpacing:1.5,fontWeight:700,fontFamily:F,marginBottom:6}}>Last Promotion</div>
+                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  <div style={{padding:'3px 8px',background:bc.bg,border:`1px solid ${bc.br}`,borderRadius:4,color:bc.tx,fontSize:11,fontWeight:800,fontFamily:F,textTransform:'uppercase'}}>{lp.new_belt}{lp.new_stripes>0?` ${lp.new_stripes}s`:''}</div>
+                  <div style={{color:'#555',fontSize:12,fontFamily:FB}}>{new Date(lp.promoted_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div>
+                </div>
+              </div>}
+              <button onClick={()=>setMemberModal(null)} style={{width:'100%',padding:'11px',background:'transparent',border:`1px solid ${BL}`,borderRadius:8,color:'#555',fontSize:12,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer'}}>Close</button>
+            </>;
+          })()}
+        </div>
+      </div>
+    </div>}
+
+    {showAllLeaderboard&&<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.92)',zIndex:200,display:'flex',alignItems:'flex-end',justifyContent:'center'}}>
+      <div style={{background:'#0e0e0c',border:`1px solid ${BL}`,borderRadius:'16px 16px 0 0',width:'100%',maxWidth:480,maxHeight:'88vh',display:'flex',flexDirection:'column'}}>
+        <div style={{width:40,height:4,background:'#333',borderRadius:2,margin:'12px auto 0',flexShrink:0}}/>
+        <div style={{padding:'16px 24px 8px',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
+          <div style={{fontWeight:800,fontSize:18,color:'#fff',fontFamily:FB}}>Full Leaderboard</div>
+          <button onClick={()=>setShowAllLeaderboard(false)} style={{background:'none',border:'none',color:'#555',fontSize:20,cursor:'pointer'}}>×</button>
+        </div>
+        <div style={{overflowY:'auto',flex:1,padding:'0 24px 24px'}}>
+          {allMembers.length===0&&<div style={{color:'#444',fontSize:14,fontFamily:FB,padding:'20px 0',textAlign:'center'}}>Loading...</div>}
+          {allMembers.map((t,i)=>{
+            const c=BELT_CFG[t.belt]||BELT_CFG.White;
+            return <div key={t.id} onClick={()=>{setShowAllLeaderboard(false);openMemberModal(t.id);}} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 0',borderBottom:`1px solid ${BL}`,cursor:'pointer'}}>
+              <div style={{color:i<3?G:'#333',fontWeight:900,fontSize:16,fontFamily:FN,width:28,textAlign:'center',flexShrink:0}}>{i+1}</div>
+              <Av m={t} size={36} radius={8}/>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{color:t.id===member.id?G:'#fff',fontSize:15,fontWeight:t.id===member.id?800:600,fontFamily:FB,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{t.id===member.id?'You':t.name}</div>
+                <span style={{padding:'1px 5px',background:c.bg,border:`1px solid ${c.br}`,borderRadius:3,fontSize:8,fontWeight:800,fontFamily:F,color:c.tx,letterSpacing:1,textTransform:'uppercase'}}>{t.belt}</span>
+              </div>
+              <div style={{color:t.id===member.id?G:'#666',fontWeight:900,fontSize:15,fontFamily:FN,flexShrink:0}}>{t.sessions||0}</div>
+            </div>;
+          })}
+        </div>
+      </div>
+    </div>}
 
     {showPendingModal&&member.stripe_checkout_session&&<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.92)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
       <div style={{background:'#0e0e0c',border:`1px solid ${BLUE}40`,borderRadius:16,width:'100%',maxWidth:400,padding:28}}>
