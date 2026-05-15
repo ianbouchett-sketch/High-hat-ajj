@@ -19,7 +19,7 @@ const BELT_CFG={
   Blue:{bg:'#1a3a6e',tx:'#fff',br:'#2a5aae',gl:'rgba(42,90,174,.18)'},
   Purple:{bg:'#3e1460',tx:'#fff',br:'#6a2aaa',gl:'rgba(106,42,170,.2)'},
   Brown:{bg:'#4a2000',tx:'#fff',br:'#7a3e10',gl:'rgba(122,62,16,.18)'},
-  Black:{bg:'#111',tx:'#fff',br:'#444',gl:'rgba(255,255,255,.05)'},
+  Black:{bg:'#111',tx:'#fff',br:'#c0392b',gl:'rgba(192,57,43,.15)'},
 };
 const TYPE_CFG={
   'Gi':{bg:'#0e2040',br:'#1a4080',tx:'#5a9aff'},

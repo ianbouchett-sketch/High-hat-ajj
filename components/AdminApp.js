@@ -20,7 +20,7 @@ const F="'Barlow Condensed','Arial Narrow',Arial,sans-serif";
 const FB="'Barlow',Arial,sans-serif";
 const FN="'Barlow Condensed','Arial Narrow',Arial,sans-serif";
 
-const BELT_CFG={White:{bg:'#e8e8e0',tx:'#111',br:'#ccc'},Grey:{bg:'#777',tx:'#fff',br:'#999'},Yellow:{bg:'#c9a227',tx:'#000',br:'#a07800'},Orange:{bg:'#c97316',tx:'#fff',br:'#a05010'},Green:{bg:'#2a6a2a',tx:'#fff',br:'#1a4a1a'},Blue:{bg:'#1a3a6e',tx:'#fff',br:'#2a5aae'},Purple:{bg:'#3e1460',tx:'#fff',br:'#6a2aaa'},Brown:{bg:'#4a2000',tx:'#fff',br:'#7a3e10'},Black:{bg:'#111',tx:'#fff',br:'#444'}};
+const BELT_CFG={White:{bg:'#e8e8e0',tx:'#111',br:'#ccc'},Grey:{bg:'#777',tx:'#fff',br:'#999'},Yellow:{bg:'#c9a227',tx:'#000',br:'#a07800'},Orange:{bg:'#c97316',tx:'#fff',br:'#a05010'},Green:{bg:'#2a6a2a',tx:'#fff',br:'#1a4a1a'},Blue:{bg:'#1a3a6e',tx:'#fff',br:'#2a5aae'},Purple:{bg:'#3e1460',tx:'#fff',br:'#6a2aaa'},Brown:{bg:'#4a2000',tx:'#fff',br:'#7a3e10'},Black:{bg:'#111',tx:'#fff',br:'#c0392b'}};
 const TYPE_CFG={'Gi':{bg:'#0e2040',br:'#1a4080',tx:'#5a9aff'},'No-Gi':{bg:'#2a0e0e',br:'#6a2020',tx:'#ff7a7a'},'Wrestling':{bg:'#0e2a0e',br:'#206a20',tx:'#7acc7a'},'Judo':{bg:'#2a1a00',br:'#7a5000',tx:'#ffaa44'},'Open Mat':{bg:'#1a1a2a',br:'#4a4a9a',tx:'#aaaaff'},'Other':{bg:'#1a1a1a',br:'#444',tx:'#888'}};
 const DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const DAYSS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
