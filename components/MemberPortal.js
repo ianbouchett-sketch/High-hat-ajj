@@ -128,6 +128,7 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
   const [postUploading,setPostUploading]=useState(false);
   const [hashtagFilter,setHashtagFilter]=useState(null);
   const [confirmDelPost,setConfirmDelPost]=useState(null);
+  const [ossModal,setOssModal]=useState(null);
   const [memberModal,setMemberModal]=useState(null);
   const [showAllLeaderboard,setShowAllLeaderboard]=useState(false);
   const [allMembers,setAllMembers]=useState([]);
@@ -260,6 +261,12 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
     const res=await fetch('/api/log-session',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,memberId:member.id})});
     if(res.ok){setSessions(s=>s.filter(x=>x.id!==sessionId));showT('Session removed.');}
     setConfirmDelSession(null);
+  }
+  async function fetchOssLikers(postId){
+    setOssModal({postId,likers:[],loading:true});
+    const res=await fetch(`/api/post-reactions?post_id=${postId}&member_id=${member.id}`);
+    const data=await res.json();
+    setOssModal({postId,likers:data.likers||[],loading:false});
   }
   async function toggleLike(promoId){
     const current=likes[promoId]||{count:0,liked:false};
@@ -476,10 +483,7 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
               </div>
               <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:6,flexShrink:0}}>
                 <div style={{color:'#333',fontSize:12,fontFamily:F}}>{ago(p.promoted_at)}</div>
-                <button onClick={()=>toggleLike(p.id)} style={{display:'flex',alignItems:'center',gap:4,padding:'4px 10px',background:likes[p.id]?.liked?GK:'transparent',border:`1px solid ${likes[p.id]?.liked?G:BL}`,borderRadius:20,cursor:'pointer'}}>
-                  <span style={{fontSize:14}}>👊</span>
-                  <span style={{color:likes[p.id]?.liked?G:'#555',fontSize:11,fontWeight:800,fontFamily:F,letterSpacing:.5}}>OSS{likes[p.id]?.count>0?` ${likes[p.id].count}`:''}</span>
-                </button>
+{(()=>{let pt=null;return <button onMouseDown={()=>{pt=setTimeout(()=>{pt=null;fetchOssLikers('promo_'+p.id);},450);}} onMouseUp={()=>{if(pt){clearTimeout(pt);pt=null;toggleLike(p.id);}}} onMouseLeave={()=>{if(pt){clearTimeout(pt);pt=null;}}} onTouchStart={()=>{pt=setTimeout(()=>{pt=null;fetchOssLikers('promo_'+p.id);},450);}} onTouchEnd={e=>{e.preventDefault();if(pt){clearTimeout(pt);pt=null;toggleLike(p.id);}}} style={{display:'flex',alignItems:'center',gap:4,padding:'4px 10px',background:likes[p.id]?.liked?GK:'transparent',border:`1px solid ${likes[p.id]?.liked?G:BL}`,borderRadius:20,cursor:'pointer',userSelect:'none',WebkitUserSelect:'none'}}><span style={{fontSize:14}}>👊</span><span style={{color:likes[p.id]?.liked?G:'#555',fontSize:11,fontWeight:800,fontFamily:F,letterSpacing:.5}}>OSS{likes[p.id]?.count>0?` ${likes[p.id].count}`:''}</span></button>;})()}
               </div>
             </div>;
           })}
@@ -539,10 +543,7 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
               {p.image_url&&<img src={p.image_url} alt="post" style={{width:'100%',maxHeight:400,objectFit:'cover',borderRadius:6,display:'block'}}/>}
             </div>
             <div style={{borderTop:`1px solid ${BL}`,padding:'8px 16px',display:'flex',alignItems:'center'}}>
-              <button onClick={()=>togglePostReaction(p.id,p.promotion_id)} style={{display:'flex',alignItems:'center',gap:5,padding:'5px 12px',background:react.liked?GK:'transparent',border:`1px solid ${react.liked?G:BL}`,borderRadius:20,cursor:'pointer'}}>
-                <span style={{fontSize:15}}>👊</span>
-                <span style={{color:react.liked?G:'#555',fontSize:11,fontWeight:800,fontFamily:F,letterSpacing:.5}}>OSS{react.count>0?` ${react.count}`:''}</span>
-              </button>
+              {(()=>{let pt=null;return <button onMouseDown={()=>{pt=setTimeout(()=>{pt=null;fetchOssLikers(p.id);},450);}} onMouseUp={()=>{if(pt){clearTimeout(pt);pt=null;togglePostReaction(p.id,p.promotion_id);}}} onMouseLeave={()=>{if(pt){clearTimeout(pt);pt=null;}}} onTouchStart={()=>{pt=setTimeout(()=>{pt=null;fetchOssLikers(p.id);},450);}} onTouchEnd={e=>{e.preventDefault();if(pt){clearTimeout(pt);pt=null;togglePostReaction(p.id,p.promotion_id);}}} style={{display:'flex',alignItems:'center',gap:5,padding:'5px 12px',background:react.liked?GK:'transparent',border:`1px solid ${react.liked?G:BL}`,borderRadius:20,cursor:'pointer',userSelect:'none',WebkitUserSelect:'none'}}><span style={{fontSize:15}}>👊</span><span style={{color:react.liked?G:'#555',fontSize:11,fontWeight:800,fontFamily:F,letterSpacing:.5}}>OSS{react.count>0?` ${react.count}`:''}</span></button>;})()}
             </div>
           </div>;
         })}
@@ -707,6 +708,27 @@ export default function MemberPortal({initialMember,initialSessions,initialSched
     </div>
     <div style={{height:80}}/>
 
+    {ossModal&&<div onClick={()=>setOssModal(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.88)',zIndex:210,display:'flex',alignItems:'flex-end',justifyContent:'center'}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:'#0e0e0c',border:`1px solid ${BL}`,borderRadius:'16px 16px 0 0',width:'100%',maxWidth:480,maxHeight:'70vh',display:'flex',flexDirection:'column'}}>
+        <div style={{width:40,height:4,background:'#333',borderRadius:2,margin:'12px auto 0',flexShrink:0}}/>
+        <div style={{padding:'16px 24px 8px',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
+          <div style={{fontWeight:800,fontSize:16,color:'#fff',fontFamily:F,letterSpacing:1,textTransform:'uppercase'}}>👊 OSS{!ossModal.loading&&ossModal.likers.length>0?` — ${ossModal.likers.length} ${ossModal.likers.length===1?'person':'people'}`:''}</div>
+          <button onClick={()=>setOssModal(null)} style={{background:'none',border:'none',color:'#555',fontSize:20,cursor:'pointer',lineHeight:1}}>×</button>
+        </div>
+        <div style={{overflowY:'auto',flex:1,padding:'0 24px 12px'}}>
+          {ossModal.loading&&<div style={{color:'#444',fontSize:14,fontFamily:FB,padding:'20px 0',textAlign:'center'}}>Loading...</div>}
+          {!ossModal.loading&&ossModal.likers.length===0&&<div style={{color:'#333',fontSize:14,fontFamily:FB,padding:'20px 0'}}>No OSS yet — be the first.</div>}
+          {!ossModal.loading&&ossModal.likers.map((l,i)=><div key={i} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 0',borderBottom:`1px solid ${BL}`}}>
+            <div style={{width:36,height:36,borderRadius:8,background:GK,border:`1.5px solid ${GD}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:800,color:G,fontFamily:F,flexShrink:0}}>{l.name?l.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2):'?'}</div>
+            <span style={{color:l.is_me?G:'#fff',fontSize:15,fontFamily:FB,fontWeight:l.is_me?800:600,flex:1}}>{l.name||'Unknown'}</span>
+            {l.is_me&&<span style={{fontSize:9,color:GD,fontWeight:800,fontFamily:F,letterSpacing:1.5,textTransform:'uppercase'}}>You</span>}
+          </div>)}
+        </div>
+        <div style={{padding:'10px 24px 24px',flexShrink:0}}>
+          <button onClick={()=>setOssModal(null)} style={{width:'100%',padding:'11px',background:'transparent',border:`1px solid ${BL}`,borderRadius:8,color:'#555',fontSize:12,fontFamily:F,letterSpacing:1,textTransform:'uppercase',cursor:'pointer',fontWeight:800}}>Close</button>
+        </div>
+      </div>
+    </div>}
     {memberModal&&<div onClick={()=>setMemberModal(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.88)',zIndex:200,display:'flex',alignItems:'flex-end',justifyContent:'center'}}>
       <div onClick={e=>e.stopPropagation()} style={{background:'#0e0e0c',border:`1px solid ${BL}`,borderRadius:'16px 16px 0 0',width:'100%',maxWidth:480,maxHeight:'80vh',overflowY:'auto'}}>
         <div style={{width:40,height:4,background:'#333',borderRadius:2,margin:'12px auto 0'}}/>
